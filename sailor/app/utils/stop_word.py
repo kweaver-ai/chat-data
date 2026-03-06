@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @Author:  jack.li@xxx.cn
+# @Author:  jack.li@aishu.cn
 # @Date: 2025-06-06
 
 def get_default_stop_words():

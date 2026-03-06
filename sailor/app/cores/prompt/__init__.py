@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # @Time : 2023/12/20 16:40
 # @Author : Jack.li
-# @Email : jack.li@xxx.cn
-# @File : __init_.py
+# @Email : jack.li@aishu.cn
+# @File : __init__.py.py
 # @Project : copilot

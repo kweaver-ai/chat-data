@@ -133,5 +133,5 @@ def get_authorization(IP, name, pwd) -> str:
 
 
 if __name__ == '__main__':
-    res = get_authorization("https://10.4.109.85", "", "")
+    res = get_authorization("https://10.2.179.130", "Jun", "111111")
     print(res)

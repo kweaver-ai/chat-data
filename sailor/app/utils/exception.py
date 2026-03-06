@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Time : 2023/10/27 16:52
 # @Author : Jack.li
-# @Email : jack.li@xxx.cn
+# @Email : jack.li@aishu.cn
 # @File : exception.py
 # @Project : mf-models-ie
 from enum import Enum
@@ -9,8 +9,7 @@ from pydantic import BaseModel
 from typing import List
 # from common.utils import trim_quotation_marks
 
-Err_Server_Name = "Sailor"
-
+Err_Server_Name = "MF-MODELS-IE"
 
 def trim_quotation_marks(s: str) -> str:
     if not s:
@@ -34,24 +33,6 @@ class UnicornException(Exception):
 class RequestException(Exception):
     def __init__(self, name: str):
         self.name = name
-
-class SDKRequestException(Exception):
-    def __init__(self, status, reason):
-        self.status = status
-        self.reason = reason
-
-class M3ERequestException(Exception):
-    def __init__(self, reason):
-        self.reason = reason
-
-class OPENSEARCHRequestException(Exception):
-    def __init__(self, reason):
-        self.reason = reason
-
-class NebulaGraphRetrievalException(Exception):
-    def __init__(self, reason):
-        self.reason = reason
-
 
 class ErrVal(str, Enum):
     Err_Args_Err = Err_Server_Name + "ArgsErr"  # 请求参数错误
@@ -77,7 +58,6 @@ class ErrVal(str, Enum):
     Err_Semantic_Err = Err_Server_Name + "SemanticErr"  # nebula 结构错误
     Err_Snapshot_Not_Found_Err = Err_Server_Name + "SnapshotNotFoundErr"  # 快照id不存在
     Err_StatementTypeIsText = Err_Server_Name + "StatementTypeIsText"  # 查询语句类型为值类型
-    Err_Synonym_LexiconID_Err = Err_Server_Name + "SynonymIDErr" #词库id错误
 
 
 class ErrInfo:
@@ -86,9 +66,9 @@ class ErrInfo:
         ErrVal.Err_VID_LENGTH_Err: "VID Length Error",
         ErrVal.Err_Args_Err: "Param Error",
         ErrVal.Err_KGID_Not_Found_Err: "KGid Not Found Error",
-        ErrVal.Err_Config_Status_Err: "knowledge_base Config Status Error",
-        ErrVal.ErrVClassErr: "knowledge_base Class Error",
-        ErrVal.ErrVProErr: "knowledge_base Property Error",
+        ErrVal.Err_Config_Status_Err: "KG Config Status Error",
+        ErrVal.ErrVClassErr: "KG Class Error",
+        ErrVal.ErrVProErr: "KG Property Error",
         ErrVal.Err_Already_Exists_Err: "Param Error",
         ErrVal.Err_VClass_Empty_Err: "VClass Empty Error",
         ErrVal.Err_Space_Not_Found_Err: "Space Not Found Error",
@@ -103,8 +83,7 @@ class ErrInfo:
         ErrVal.Err_Snapshot_Not_Found_Err: "Snapshot Not Found Error",
         ErrVal.Err_StatementTypeIsText: "Statement Type is Text",
         ErrVal.Err_Service_Permission_Denied_Err: "Service Permission Denied Error",
-        ErrVal.Err_Graph_Permission_Denied_Err: "Graph Permission Denied Error",
-        ErrVal.Err_Synonym_LexiconID_Err: "Synonym_ID Error"
+        ErrVal.Err_Graph_Permission_Denied_Err: "Graph Permission Denied Error"
     }
 
 

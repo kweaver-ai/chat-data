@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Time : 2023/12/26 14:02
 # @Author : Jack.li
-# @Email : jack.li@xxx.cn
+# @Email : jack.li@aishu.cn
 # @File : coverage_ut.py
 # @Project : copilot
 """ 测试模块 """

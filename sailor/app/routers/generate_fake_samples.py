@@ -1,1 +1,0 @@
-GenerateFakeSamples = "/v1/generate_fake_samples"

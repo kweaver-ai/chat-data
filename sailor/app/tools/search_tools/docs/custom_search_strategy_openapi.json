@@ -1,0 +1,130 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Custom Search Strategy Tool API",
+    "description": "用户自定义搜索策略工具 API 文档。根据用户输入的问题，找出可能匹配的自定义搜索策略，然后将结果保存到缓存中，返回缓存的key。",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://af-sailor-agent:9595",
+      "description": "生产环境"
+    }
+  ],
+  "paths": {
+    "/api/af-sailor-agent/v1/assistant/tools/custom_search_strategy": {
+      "post": {
+        "summary": "自定义搜索策略",
+        "description": "用户自定义的搜索策略，如果用户输入的意图是找数问题，那么就需要使用该工具，传入查询的问题，rule_base_name当前值是：自定义搜索策略-主推表策略",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "llm": {
+                    "type": "object",
+                    "description": "LLM 配置参数（可选）"
+                  },
+                  "auth": {
+                    "type": "object",
+                    "description": "认证参数",
+                    "properties": {
+                      "auth_url": {
+                        "type": "string",
+                        "description": "认证服务URL（可选）"
+                      },
+                      "user": {
+                        "type": "string",
+                        "description": "用户名（可选）"
+                      },
+                      "password": {
+                        "type": "string",
+                        "description": "密码（可选）"
+                      },
+                      "token": {
+                        "type": "string",
+                        "description": "认证令牌，如提供则无需用户名和密码（推荐）"
+                      },
+                      "user_id": {
+                        "type": "string",
+                        "description": "用户ID（可选）"
+                      }
+                    }
+                  },
+                  "config": {
+                    "type": "object",
+                    "description": "工具配置参数",
+                    "properties": {
+                      "base_url": {
+                        "type": "string",
+                        "description": "AF 服务基础 URL（可选，覆盖默认服务地址）"
+                      },
+                      "session_type": {
+                        "type": "string",
+                        "description": "会话类型",
+                        "enum": [
+                          "in_memory",
+                          "redis"
+                        ],
+                        "default": "redis"
+                      },
+                      "background": {
+                        "type": "string",
+                        "description": "背景信息（可选）"
+                      }
+                    }
+                  },
+                  "query": {
+                    "type": "string",
+                    "description": "用户输入的问题（必填）"
+                  },
+                  "rule_base_name": {
+                    "type": "string",
+                    "description": "规则库的名称，默认为'自定义规则库'（可选）",
+                    "default": "自定义规则库"
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "string"
+                    },
+                    "matched": {
+                      "type": "boolean"
+                    },
+                    "rule_key": {
+                      "type": "string"
+                    },
+                    "priority_table_name": {
+                      "type": "string"
+                    },
+                    "cache_key": {
+                      "type": "string"
+                    },
+                    "rule_value": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
