@@ -23,15 +23,13 @@ from data_retrieval.sessions import BaseChatHistorySession, CreateSession
 from data_retrieval.errors import ToolFatalError
 from data_retrieval.utils.model_types import ModelType4Prompt
 from app.depandencies.af_dataview import AFDataSource
-from data_retrieval.datasource.af_indicator import AFIndicator
+from app.depandencies.af_indicator import AFIndicator
 from data_retrieval.utils.llm import CustomChatOpenAI
 from data_retrieval.settings import get_settings
 from app.utils.password import get_authorization
-
+from app.tools.base import ToolMultipleResult
 from data_retrieval.tools.base import (
     ToolName,
-    # QueryIntentionName,
-    ToolMultipleResult,
     LLMTool,
     _TOOL_MESSAGE_KEY,
     construct_final_answer,
@@ -103,9 +101,18 @@ class DataSeekerReportWriterTool(LLMTool):
             query_intent: str = QueryIntentionName.INTENTION_UNKNOWN.value
     ):
         self.refresh_result_cache_key()
+        # intention_faq_human_or_house = ''
+        # intention_faq_enterprise = ''
         intention_generic_demand = ''
         intention_specific_demand = ''
 
+        # if query_intent == QueryIntentionName.INTENTION_FAQ_HUMAN_OR_HOUSE.value:
+        #     logger.info(f'query_intent == QueryIntentionName.INTENTION_FAQ_HUMAN_OR_HOUSE.value={query_intent == QueryIntentionName.INTENTION_FAQ_HUMAN_OR_HOUSE.value}')
+        #     intention_faq_human_or_house = QueryIntentionName.INTENTION_FAQ_HUMAN_OR_HOUSE.value
+        # if query_intent == QueryIntentionName.INTENTION_FAQ_ENTERPRISE.value:
+        #     logger.info(
+        #         f'query_intent == QueryIntentionName.INTENTION_FAQ_ENTERPRISE.value={query_intent == QueryIntentionName.INTENTION_FAQ_HUMAN_OR_HOUSE.value}')
+        #     intention_faq_enterprise = QueryIntentionName.INTENTION_FAQ_ENTERPRISE.value
         if query_intent == QueryIntentionName.INTENTION_GENERIC_DEMAND.value:
             logger.info(f'query_intent == QueryIntentionName.INTENTION_GENERIC_DEMAND.value={query_intent == QueryIntentionName.INTENTION_GENERIC_DEMAND.value}')
             intention_generic_demand = QueryIntentionName.INTENTION_GENERIC_DEMAND.value
@@ -126,6 +133,8 @@ class DataSeekerReportWriterTool(LLMTool):
             language=self.language,
             data_source_list_description=data_source_list_description,
             background=self.background,
+            # intention_faq_human_or_house=intention_faq_human_or_house,
+            # intention_faq_enterprise=intention_faq_enterprise,
             intention_generic_demand=intention_generic_demand,
             intention_specific_demand=intention_specific_demand,
         )
@@ -390,6 +399,8 @@ class DataSeekerReportWriterTool(LLMTool):
                                         "type": "string",
                                         "description": "用户意图标签",
                                         "enum": [
+                                            "人房高频查询场景",
+                                            "企业高频查询场景",
                                             "宽泛的需求",
                                             "具体的需求",
                                             "超出范围",

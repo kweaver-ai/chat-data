@@ -1,4 +1,4 @@
-from app.cores.service.adp_service import ADPService
+from app.service import ADPService
 from app.cores.af_agents.models import AgentQAModel
 
 class AgentService(object):

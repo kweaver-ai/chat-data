@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 from app.handlers.agent_management_handler import AgentManagementRouter
+from app.handlers.config_handler import ConfigRouter
 from app.handlers.search_handler import search_api
+from app.handlers.data_understand_handler import DataUnderstandAPIRouter
 from app.routers import API_V1_STR
 from app.routers.agent_temp_router import ToolRouter
 
 from data_retrieval.tools.tool_api_router import BaseToolAPIRouter
-from app.tools.search_tools import _TOOLS_MAPPING
+from app.tools import _TOOLS_MAPPING
 
 def router_init(app):
     app.include_router(
         search_api,
         prefix=API_V1_STR,
         tags=['search'],
-        include_in_schema=False,
+        include_in_schema=True,
         responses={404: {"description": "Not found"}},
     )
 
@@ -22,7 +24,16 @@ def router_init(app):
         tool_router,
         prefix=API_V1_STR,
         tags=['tools'],
-        include_in_schema=False,
+        include_in_schema=True,
+        responses={404: {"description": "Not found"}},
+    )
+
+    # 数据理解工具路由
+    app.include_router(
+        DataUnderstandAPIRouter,
+        prefix=API_V1_STR,
+        tags=['data_understand'],
+        include_in_schema=True,
         responses={404: {"description": "Not found"}},
     )
 
@@ -31,7 +42,16 @@ def router_init(app):
         AgentManagementRouter,
         prefix=f"{API_V1_STR}/assistant",
         tags=['agent_management'],
-        include_in_schema=False,
+        include_in_schema=True,
+        responses={404: {"description": "Not found"}},
+    )
+
+    # 配置管理路由
+    app.include_router(
+        ConfigRouter,
+        prefix=f"{API_V1_STR}/system",
+        tags=['config_management'],
+        include_in_schema=True,
         responses={404: {"description": "Not found"}},
     )
 

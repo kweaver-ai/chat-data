@@ -46,3 +46,16 @@ def get_token(request: Request):
         token = request.headers.get("authorization", "")
     return token
 
+
+if __name__ == '__main__':
+
+    appId = ""
+    appSecret = ""
+    mode = "POST"
+    paths = "/data-application-gateway/cssjybg"
+    body_ = {"id": 1}
+    auth = init_token(appId, appSecret, mode, paths, body_)
+    headers = {"Authorization": auth}
+    url = "http://10.4.113.103/data-application-gateway/cssjybg"
+    res = requests.post(url, json={"id": 1}, headers=headers, verify=False)
+    print(res.json())

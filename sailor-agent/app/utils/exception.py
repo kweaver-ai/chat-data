@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Time : 2023/10/27 16:52
 # @Author : Jack.li
-# @Email : jack.li@xxx.cn
+# @Email : jack.li@aishu.cn
 # @File : exception.py
 # @Project : mf-models-ie
 from enum import Enum

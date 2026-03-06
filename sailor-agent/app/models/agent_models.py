@@ -2,6 +2,8 @@ from enum import Enum
 
 from pydantic import BaseModel
 
+from app.models.config_models import SystemConfigResponse
+
 
 class agent_input(BaseModel):
     pass
@@ -19,9 +21,10 @@ class LogsPrefix(Enum):
 # Agent List Models
 class AFAgentListReqBody(BaseModel):
     name: str = ""
-    size: int = 0
-    pagination_marker_str: str = ""
     list_flag: int = 0
+    size: int = 10
+    pagination_marker_str: str = ""
+    category_ids: list[str] = None
 
 
 class AgentItem(BaseModel):
@@ -67,5 +70,13 @@ class PullOffAFAgentReqBody(BaseModel):
     af_agent_id: str
 
 
+class UpdateCategoryAFAgentReqBody(BaseModel):
+    category_ids: list[str]
+
+
 class PullOffAFAgentResp(BaseModel):
     res: dict = {"status": "success"}
+
+
+class AgentDetailCategoryResp(BaseModel):
+    entries: list[SystemConfigResponse] = []

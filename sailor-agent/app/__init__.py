@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Time : 2023/12/19 14:16
 # @Author : 窦梓瑜
-# @Email : ziyu.dou@xxx.cn
+# @Email : ziyu.dou@aishu.cn
 # @File : __init__.py.py
 # @Project : copilot
 from typing import Callable
@@ -58,5 +58,10 @@ def create_app():
 
     router_init(app)
     app.middleware('http')(user_define_middleware)
+    
+    # Add route for Chrome DevTools JSON file
+    @app.get("/.well-known/appspecific/com.chrome.devtools.json")
+    async def chrome_devtools_json():
+        return {}
 
     return app

@@ -94,6 +94,8 @@ class DataSeekerIntentionRecognizerTool(LLMTool):
             data_scope_dept_infosystem=self.data_scope_dept_infosystem,
             data_scope_dept_infosystem_description=self.data_scope_dept_infosystem_description,
             background=self.background,
+            # intention_faq_human_or_house=QueryIntentionName.INTENTION_FAQ_HUMAN_OR_HOUSE.value,
+            # intention_faq_enterprise=QueryIntentionName.INTENTION_FAQ_ENTERPRISE.value,
             intention_generic_demand=QueryIntentionName.INTENTION_GENERIC_DEMAND.value,
             intention_specific_demand=QueryIntentionName.INTENTION_SPECIFIC_DEMAND.value,
             intention_out_of_scope=QueryIntentionName.INTENTION_OUT_OF_SCOPE.value,

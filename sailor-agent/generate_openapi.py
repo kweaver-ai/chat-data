@@ -4,7 +4,7 @@
 """
 import asyncio
 import json
-from app.tools.search_tools import _TOOLS_MAPPING
+from app.tools import _TOOLS_MAPPING
 from app.routers import API_V1_STR
 from app.routers.agent_temp_router import ToolRouter
 
@@ -16,8 +16,8 @@ async def generate_openapi_doc():
     openapi_doc = {
         "openapi": "3.0.0",
         "info": {
-            "title": "AF Sailor Agent",
-            "description": "AF Sailor Agent认知助手服务",
+            "title": "Sailor Agent",
+            "description": "Sailor Agent数据分析员",
             "version": "1.0.0"
         },
         "servers": [
@@ -34,6 +34,9 @@ async def generate_openapi_doc():
     
     # 遍历所有工具，获取它们的 schema
     for tool_name, tool_class in _TOOLS_MAPPING.items():
+        # 搜索工具
+        if tool_name not in ["datasource_rerank"]:
+            continue
         if hasattr(tool_class, 'get_api_schema'):
             try:
                 # 调用静态方法获取 schema

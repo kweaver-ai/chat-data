@@ -89,6 +89,8 @@ class DataSeekerReportWriterPrompt(BasePrompt):
     data_source_list: List[dict] = []
     data_source_list_description: str = ""
     background: str = ""
+    # intention_faq_human_or_house:str=""
+    # intention_faq_enterprise:str=""
     intention_generic_demand:str=""
     intention_specific_demand:str=""
 

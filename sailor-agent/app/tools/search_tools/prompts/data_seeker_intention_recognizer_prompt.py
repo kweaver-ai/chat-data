@@ -239,6 +239,8 @@ class DataSeekerIntentionRecognizerPrompt(BasePrompt):
     data_scope_dept_infosystem: List[dict] = []
     data_scope_dept_infosystem_description: str = ""
     background: str = ""
+    # intention_faq_human_or_house: str = ""
+    # intention_faq_enterprise: str = ""
     intention_generic_demand: str = ""
     intention_specific_demand: str = ""
     intention_out_of_scope: str = ""

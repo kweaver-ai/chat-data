@@ -34,7 +34,21 @@ class RedisHistorySession(BaseChatHistorySession):
             history_num_limit=retrieval_settings.AGENT_SESSION_HISTORY_NUM_LIMIT,
             history_max=retrieval_settings.AGENT_SESSION_HISTORY_MAX
     ):
-        self.client = RedisConnect().connect()
+        try:
+            logger.info(f"初始化 RedisHistorySession，配置: host={settings.REDIS_HOST}, "
+                       f"port={settings.REDIS_PORT}, db={settings.REDIS_DB}, "
+                       f"connect_type={settings.REDIS_CONNECT_TYPE}"
+                        f'redis_passwd={settings.REDIS_PASSWORD}'
+                        f'redis_sentinel_passwd={settings.REDIS_SENTINEL_PASSWORD}')
+            self.client = RedisConnect().connect()
+            # 测试连接
+            self.client.ping()
+            logger.info("Redis 连接成功")
+        except Exception as e:
+            logger.error(f"Redis 连接失败: {e}")
+            import traceback
+            logger.error(f"异常详情: {traceback.format_exc()}")
+            raise
         self.history_num_limit = history_num_limit
         self.history_max = history_max
 
@@ -147,11 +161,23 @@ class RedisHistorySession(BaseChatHistorySession):
             logs: dict,
             expire_time: int = settings.REDIS_SESSION_EXPIRE_TIME
     ) -> Any:
-        self.client.setex(
-            name=session_id,
-            time=expire_time,
-            value=json.dumps(logs, ensure_ascii=False),
-        )
+        try:
+            logger.info(f"准备写入 Redis，session_id: {session_id}, expire_time: {expire_time}")
+            logger.debug(f"写入的数据: {logs}")
+            result = self.client.setex(
+                name=session_id,
+                time=expire_time,
+                value=json.dumps(logs, ensure_ascii=False),
+            )
+            logger.info(f"Redis 写入成功，session_id: {session_id}, result: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"Redis 写入失败，session_id: {session_id}, 错误: {e}")
+            logger.error(f"Redis 配置信息 - host: {settings.REDIS_HOST}, port: {settings.REDIS_PORT}, "
+                        f"db: {settings.REDIS_DB}, connect_type: {settings.REDIS_CONNECT_TYPE}")
+            import traceback
+            logger.error(f"异常详情: {traceback.format_exc()}")
+            raise
 
     # TODO: 直接返回 get_chat_history
     def get_agent_logs(
@@ -282,3 +308,5 @@ class RedisConnect:
             return client
 
 
+if __name__ == "__main__":
+    pass

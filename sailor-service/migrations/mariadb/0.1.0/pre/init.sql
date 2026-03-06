@@ -76,14 +76,3 @@ CREATE TABLE if not exists `t_assistant_config` (
     `updated_at` date DEFAULT NULL COMMENT '更新日期',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
-CREATE TABLE IF NOT EXISTS `t_agent` (
-    `agent_id` bigint(20) NOT NULL COMMENT 'af 智能体id',
-    `id` varchar(100) NOT NULL COMMENT '智能体id',
-    `adp_agent_key` varchar(100) NOT NULL COMMENT 'adp 智能体key',
-    `deleted_at` bigint(20) NOT NULL DEFAULT 0 COMMENT '是否删除',
-    `created_at` datetime NOT NULL,
-    `updated_at` datetime NOT NULL,
-    PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

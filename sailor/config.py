@@ -1,114 +1,133 @@
+# -*- coding: utf-8 -*-
+
 import os
 from functools import lru_cache
+
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
+# 加载 .env 文件（如果存在）
+# 优先级：环境变量 > .env 文件 > 代码中的默认值
 load_dotenv()
 
+
 class Settings(BaseSettings):
-    SERVER_HOST: str = os.getenv("SERVER_HOST", "0.0.0.0")
-    SERVER_PORT: int = int(os.getenv("SERVER_PORT", "9595"))
+    # 本地调试时， 可以设置本地环境变量 IF_DEBUG， 设置值为 True
+    # 生产环境不存在这个环境变量，IF_DEBUG 值为 False
+    IF_DEBUG: bool = os.getenv('IF_DEBUG', False)
 
-    REDIS_CONNECT_TYPE: str = os.getenv("REDIS_CONNECT_TYPE", 'master-slave')
-    REDIS_MASTER_NAME: str = os.getenv("REDIS_MASTER_NAME", 'mymaster')
-    REDIS_DB: str = os.getenv("REDIS_DB", "0")
+    DEBUG_URL_ANYFABRIC: str = '10.4.109.85'
+    DEBUG_URL_ANYFABRIC_HTTP: str = 'http://' + DEBUG_URL_ANYFABRIC
+    DEBUG_URL_ANYFABRIC_HTTPS: str = 'https://' + DEBUG_URL_ANYFABRIC
 
-    REDIS_SENTINEL_HOST: str = os.getenv("REDIS_SENTINEL_HOST", 'proton-redis-proton-redis-sentinel.resource')
-    REDIS_SENTINEL_PORT: str = os.getenv("REDIS_SENTINEL_PORT", "26379")
-    REDIS_SENTINEL_PASSWORD: str = os.getenv("REDIS_SENTINEL_PASSWORD", '')
-    REDIS_SENTINEL_USER_NAME: str = os.getenv("REDIS_SENTINEL_USER_NAME", '')
+    DEBUG_URL_GPU: str = 'http://192.168.152.11'  # 本地调试时， 配置 大模型服务器 测试环境的IP
 
-    REDIS_HOST: str = os.getenv("REDIS_HOST", 'proton-redis-proton-redis-sentinel.resource')
-    REDIS_PORT: str = os.getenv("REDIS_PORT", "6379")
-    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", 'password')
-    REDIS_SESSION_EXPIRE_TIME: int = 60 * 60 * 24
+    DEBUG_DIP_GATEWAY: str = '10.4.109.85'
+    DEBUG_DIP_GATEWAY_HTTP: str = 'http://' + DEBUG_DIP_GATEWAY
+    DEBUG_DIP_GATEWAY_HTTPS: str = 'https://' + DEBUG_DIP_GATEWAY
+    DEBUG_DIP_GATEWAY_USER: str = os.getenv('DEBUG_DIP_GATEWAY_USER', '')
+    DEBUG_DIP_GATEWAY_TYPE: str = 'user'
 
-    AD_GATEWAY_URL: str = os.getenv('AD_GATEWAY_URL', 'https://10.4.134.32:8444')
-    AD_GATEWAY_USER: str = os.getenv('AD_GATEWAY_USER', '')
-    AD_GATEWAY_PASSWORD: str = os.getenv('AD_GATEWAY_PASSWORD', '')
-    # AISHU_READER_LLM: str = os.getenv('AISHU_READER_LLM', "http://192.168.152.11:8303/v1/Qwen2-72B-Chat")
-    AISHU_READER_LLM: str = os.getenv('AISHU_READER_LLM', "https://10.4.134.32:8444/api/model-factory/v1/Qwen-72B-Chat")
-    FINAL_READER_LLM: str = AISHU_READER_LLM
-    if os.getenv('FINAL_READER_LLM') is not None and os.getenv('FINAL_READER_LLM') != "":
-        FINAL_READER_LLM = os.getenv('FINAL_READER_LLM', "https://10.4.134.32:8444/api/model-factory/v1/Qwen-72B-Chat")
-    LLM_STYLE: str = os.getenv('LLM_STYLE', "OPENAI")
+    # 用于测试环境中给不同服务器上的 af-sailor 提示词分组
+    if IF_DEBUG:
+        AF_IP: str = os.getenv("AF_IP", DEBUG_URL_ANYFABRIC_HTTPS)
+    else:
+        AF_IP: str = os.getenv("AF_IP", "")
 
+    LLM_NAME: str = os.getenv('LLM_NAME', "Tome-pro")
 
-    DPQA_MYSQL_HOST: str = os.getenv("MYSQL_HOST", '10.4.104.59:15236')
-    DPQA_MYSQL_USER: str = os.getenv("MYSQL_USERNAME", 'SYSDBA')
-    DPQA_MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", 'SYSDBA001')
-    DPQA_MYSQL_DATABASE: str = os.getenv("MYSQL_DB", 'af_cognitive_assistant')
-    DB_TYPE: str = os.getenv("DB_TYPE","dm8")
+    AF_OPENSEARCH_HOST: str = os.getenv('OPENSEARCH_HOST', DEBUG_URL_ANYFABRIC)
+    AF_OPENSEARCH_PORT: str = os.getenv('OPENSEARCH_PORT', '9200')
+    AF_OPENSEARCH_USER: str = os.getenv('OPENSEARCH_USER', '')
+    # 密码不应硬编码在代码中，必须通过环境变量或 .env 文件提供
+    AF_OPENSEARCH_PASS: str = os.getenv('OPENSEARCH_PASS', '')
 
-    AF_IP: str = os.getenv("AF_IP", "")
-    AF_DEBUG_IP: str = os.getenv("AF_DEBUG_IP", "")
-    SAILOR_URL: str = os.getenv("SAILOR_URL", "http://af-sailor:9797")
-    AF_QA_TIMEOUT: int | str = os.getenv("AF_QA_TIMEOUT", 295)
-
-    # 模型相关配置
-    MODEL_TYPE: str = os.getenv("MODEL_TYPE", "openai")
-    TOOL_LLM_MODEL_NAME: str = os.getenv("TOOL_LLM_MODEL_NAME", "Tome-pro")
-    TOOL_LLM_OPENAI_API_KEY: str = os.getenv("TOOL_LLM_OPENAI_API_KEY", "EMPTY")
-    TOOL_LLM_OPENAI_API_BASE: str = os.getenv("TOOL_LLM_OPENAI_API_BASE", "http://mf-model-api:9898/api/private/mf-model-api/v1/")
-
-    CS_FILTER_VALUE: float = os.getenv('CS_FILTER_VALUE', 3.99)
-    AD_OPENSEARCH_HOST: str = os.getenv('AD_OPENSEARCH_HOST', '10.4.109.199')
-    AD_OPENSEARCH_PORT: str = os.getenv('AD_OPENSEARCH_PORT', '9200')
-    AD_OPENSEARCH_USER: str = os.getenv('AD_OPENSEARCH_USER', '')
-    AD_OPENSEARCH_PASS: str = os.getenv('AD_OPENSEARCH_PASS', '')
-    ML_EMBEDDING_URL: str = os.getenv('ML_EMBEDDING_URL', 'http://192.168.152.11:8316')
+    ML_EMBEDDING_URL: str = os.getenv('ML_EMBEDDING_URL', DEBUG_URL_GPU + ':8316')
     ML_EMBEDDING_URL_suffix: str = 'v1/embeddings'
     # AD 版本信息
-    AD_VERSION: str = os.getenv('AD_VERSION', '3.0.0.3')
+    AD_VERSION: str = os.getenv('AD_VERSION', '3.0.1.3')
 
-    # 外部服务
-    HYDRA_URL: str = os.getenv('HYDRA_HOST', 'http://hydra-admin:4445')
+    # 智能推荐：获取字典配置、获取AD环境参数、大模型名称
+    AF_SVC_URL: str = 'http://configuration-center:8133/api/internal/configuration-center/v1/byType-list/6'
+    AD_BASIC_INFOS_URL: str = 'http://af-sailor-service:80/api/internal/af-sailor-service/v1/knowledge/configs'
+    # AF_SVC_URL: str = 'http://10.4.134.29:8133/api/internal/configuration-center/v1/byType-list/6'
+    # AD_BASIC_INFOS_URL: str = 'http://10.4.134.29:80/api/internal/af-sailor-service/v1/knowledge/configs'
+    REC_LLM_NAME: str = os.getenv('RECOMMEND_LLM_NAME', 'L40-Qwen2-72B-Chat')
 
-    # 调试模式
-    DEBUG_MODE: bool = os.getenv('DEBUG_MODE', 'False')
+    # DIP
+    DIP_GATEWAY_URL: str = os.getenv('DIP_GATEWAY_URL', DEBUG_DIP_GATEWAY_HTTP)
+    DIP_GATEWAY_USER: str = os.getenv('DIP_GATEWAY_USER', DEBUG_DIP_GATEWAY_USER)
+    DIP_GATEWAY_USER_TYPE: str = os.getenv('DIP_GATEWAY_USER_TYPE', DEBUG_DIP_GATEWAY_TYPE)
 
-    # 启用 rethink 工具
-    ENABLE_RETHINK_TOOL: bool = os.getenv('ENABLE_RETHINK_TOOL', 'False')
+    # retriever中的分数阈值，如果分数都小于阈值，那么就返回第一个， 就不看分数
+    CS_FILTER_VALUE: float = os.getenv('CS_FILTER_VALUE', 3.99)
+    # 已废弃：QA区分不走大模型的query文字长度，<=5个字，返回搜索列表的结果， 不走大模型， 但是分析问答型搜索算法还是要走一遍向量和大模型调用
+    QUERY_LEN_MIN: int = os.getenv('QUERY_LEN_MIN', 6)
 
-    # data-view 服务
-    DATA_VIEW_URL: str = os.getenv('DATA_VIEW_URL', 'http://data-view:8123')
+    MIN_SCORE: float = os.getenv('MIN_SCORE', 0.85)  # 搜索列表向量召回的分数下限阈值
+    SAMPLE_NUM: int = os.getenv('SAMPLE_NUM', 1)  # 探查样例数量
+    CODE_VALUE_NUM: int = os.getenv('CODE_VALUE_NUM', 20)  # 码值数量
+    OS_NUM: int = os.getenv('OS_NUM', 500)  # 用于辅助排序, 用在"score": settings.OS_NUM - num中
+    OS_KEY_NUM: int = os.getenv('OS_KEY_NUM', 1000)  # opensearch关键词搜索返回结果数量限制
+    OS_VEC_NUM: int = os.getenv('OS_VEC_NUM', 100)  # opensearch向量搜索返回结果数量限制
+    Finally_NUM: int = os.getenv('EN_NUM', 30)  # 图分析最终返回前端数量限制
 
-    # Kafka 配置
-    KAFKA_BOOTSTRAP_SERVERS: str = os.getenv("KAFKA_URI", "kafka-headless.resource:9097")
-    KAFKA_DATA_UNDERSTAND_RESULT_TOPIC: str = os.getenv("KAFKA_DATA_UNDERSTAND_RESULT_TOPIC", "data-understanding-responses")
-    KAFKA_PASSWORD: str = os.getenv("KAFKA_PASSWORD", "")
+    ######################################### redis 连接信息
+    REDIS_CONNECT_TYPE: str = os.getenv('REDIS_CONNECT_TYPE', 'master-slave')
+    REDIS_MASTER_NAME: str = os.getenv('REDIS_MASTER_NAME', 'mymaster')
+    REDIS_DB: str = os.getenv('REDIS_DB', '0')
 
+    REDIS_SENTINEL_HOST: str = os.getenv('REDIS_SENTINEL_HOST', 'proton-redis-proton-redis-sentinel.resource')
+    REDIS_SENTINEL_PORT: str = os.getenv('REDIS_SENTINEL_PORT', "26379")
+    # 密码不应硬编码在代码中，必须通过环境变量或 .env 文件提供
+    REDIS_SENTINEL_PASSWORD: str = os.getenv('REDIS_SENTINEL_PASSWORD', '')
+    REDIS_SENTINEL_USER_NAME: str = os.getenv('REDIS_SENTINEL_USER_NAME', '')
 
-    # ADP 服务
-    ADP_HOST: str = os.getenv("ADP_HOST", "agent-app")
-    ADP_PORT: str = os.getenv("ADP_PORT", "30777")
+    REDIS_HOST: str = os.getenv('REDIS_HOST', DEBUG_URL_ANYFABRIC)
+    REDIS_PORT: str = os.getenv('REDIS_PORT', '6379')
+    # 密码不应硬编码在代码中，必须通过环境变量或 .env 文件提供
+    REDIS_PASSWORD: str = os.getenv('REDIS_PASSWORD', '')
 
-    XAccountID: str = os.getenv("ADP_X_ACCOUNT_ID", "ceeb84c2-87ca-11f0-af23-e24b42ec8e4f")
-    XAccountType: str = os.getenv("ADP_X_ACCOUNT_TYPE", "user")
+    ######################################### kafka消息：环境变量+常量
+    KAFKA_MQ_HOST: str = os.getenv('KAFKA_MQ_HOST', 'kafka-headless.resource:9097')
+    KAFKA_HOST: str = KAFKA_MQ_HOST.split(':')[0]
+    KAFKA_PORT: str = KAFKA_MQ_HOST.split(':')[-1]
+    KAFKA_MECHANISM: str = os.getenv('KAFKA_MQ_MECHANISM', 'PLAIN')
+    KAFKA_SECURITY_PROTOCOL: str = 'SASL_PLAINTEXT'
+    KAFKA_USERNAME: str = os.getenv('KAFKA_MQ_USERNAME', 'kafkaclient')
+    # 密码不应硬编码在代码中，必须通过环境变量或 .env 文件提供
+    KAFKA_PASSWORD: str = os.getenv('KAFKA_MQ_PASSWORD', '')
+    KAFKA_TOPIC: str = 'af.af-sailor.table_completion'
+    KAFKA_PARTITION: int = 0
+    KAFKA_EX_TIME: int = 60
 
-    ADP_AGENT_KEY: str = os.getenv("ADP_AGENT_KEY", "01KF0EPC3SDWKPKFN3PY0XTRHF")
-    ADP_BUSINESS_DOMAIN_ID: str = os.getenv("ADP_BUSINESS_DOMAIN_ID", "bd_public")
-    ADP_AGENT_FACTORY_HOST: str = os.getenv("ADP_AGENT_FACTORY_HOST", "http://agent-factory:13020")
-    ADP_ONTOLOGY_MANAGER_HOST: str = os.getenv("ADP_ONTOLOGY_MANAGER_HOST", "http://ontology-manager-svc:13014")
-    ADP_ONTOLOGY_QUERY_HOST: str = os.getenv("ADP_ONTOLOGY_QUERY_HOST", "http://ontology-query-svc:13018")
+    ######################################### 数据元补全：超时时间（以second为单位）、大模型输入/输出长度限制（通过字典配置）
+    TABLE_COMPLETION_AF_SVC_URL: str = 'http://configuration-center:8133/api/internal/configuration-center/v1/byType-list/9'
+    TABLE_COMPLETION_LLM_NAME: str = os.getenv('TABLE_COMPLETION_LLM_NAME', 'Tome-L')
+    TABLE_COMPLETION_REDIS_HASHTABLE_NAME: str = 'af_sailor_table_completion'
+    TABLE_COMPLETION_DELTA_CHECK_TIME: int = 60 * 60
 
+    # 鉴权服务
 
-    VIR_ENGINE_URL: str = "http://vega-gateway:8099"
-    INDICATOR_MANAGEMENT_URL: str = "http://indicator-management:8213"
-    AUTH_SERVICE_URL: str = "http://auth-service:8155"
-    CATALOG_URL: str =  os.getenv("AF_CATALOG_URL", "http://data-catalog:8153")
-    DATA_MODEL_URL:str = os.getenv("DATA_MODEL_URL", "http://mdl-data-model-svc:13020")
+    HYDRA_URL: str = os.getenv('HYDRA_HOST', DEBUG_URL_ANYFABRIC_HTTP + ':4445')
 
-
-
-class Config:
-    TIMES: int = 3
-    TIMEOUT: int = 50
+    AF_CONFIGUATION_CENTER_BY_TYPE: str = 'http://configuration-center:8133/api/internal/configuration-center/v1/byType-list/{num}'
 
 
 @lru_cache
 def get_settings():
     return Settings()
 
-
 settings = get_settings()
+
+
+if __name__ == '__main__':
+
+    print(settings.model_dump())
+    print(settings.model_dump_json())
+
+    print(settings.DEBUG_URL_ANYFABRIC_HTTP)
+    print(settings.DEBUG_URL_ANYFABRIC_HTTPS)
+    print(settings.DEBUG_URL_AD_HTTPS)
+
+    print(settings.DEBUG_URL_GPU)

@@ -1,0 +1,65 @@
+{
+  "result_types": [
+    "resource"
+  ],
+  "entity_weight": {
+    "resource": 2,
+    "dataowner": 1,
+    "datasource": 1,
+    "department": 1,
+    "info_system": 1,
+    "metadataschema": 1,
+    "data_explore_report": 1,
+    "response_field": 1,
+    "field": 1,
+    "subdomain": 1,
+    "domain": 1
+  },
+  "entity_limit": 1000,
+  "entity2service": {
+    "resource": {
+      "relation": "",
+      "weight": 4
+    },
+    "response_field": {
+      "relation": "包含",
+      "weight": 1.9
+    },
+    "field": {
+      "relation": "包含",
+      "weight": 1.8
+    },
+    "data_explore_report": {
+      "relation": "包含",
+      "weight": 1.8
+    },
+    "dataowner": {
+      "relation": "管理",
+      "weight": 1.3
+    },
+    "department": {
+      "relation": "管理",
+      "weight": 1.3
+    },
+    "info_system": {
+      "relation": "包含",
+      "weight": 1.3
+    },
+    "domain": {
+      "relation": "包含",
+      "weight": 1.3
+    },
+    "subdomain": {
+      "relation": "包含",
+      "weight": 1
+    },
+    "datasource": {
+      "relation": "包含",
+      "weight": 1
+    },
+    "metadataschema": {
+      "relation": "包含",
+      "weight": 1
+    }
+  }
+}

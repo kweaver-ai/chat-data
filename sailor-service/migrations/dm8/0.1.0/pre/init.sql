@@ -85,13 +85,3 @@ CREATE TABLE if not exists "t_assistant_config" (
     "updated_at" date DEFAULT NULL,
     CLUSTER PRIMARY KEY ("id")
     );
-
-CREATE TABLE IF NOT EXISTS "t_agent" (
-    "agent_id"INT NOT NULL IDENTITY(1, 1),
-    "id" varchar(100 char) NOT NULL,
-    "adp_agent_key" varchar(100 char) NOT NULL,
-    "deleted_at" INT DEFAULT 0,
-    "created_at" date DEFAULT NULL,
-    "updated_at" date DEFAULT NULL,
-    CLUSTER PRIMARY KEY ("id")
-    );

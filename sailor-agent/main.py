@@ -5,6 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app import create_app
 from app.utils.exception import UnicornException, NewErrorBase, ErrVal, RequestException
+from config import settings
 
 app = create_app()
 
@@ -47,4 +48,4 @@ async def validation_exception_handler(request: Request,
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=9595)
+    uvicorn.run(app, host=settings.SERVER_HOST, port=settings.SERVER_PORT)

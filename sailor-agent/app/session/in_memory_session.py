@@ -1,3 +1,5 @@
+from typing import Any
+
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from app.session import BaseChatHistorySession
@@ -7,6 +9,7 @@ class InMemoryChatSession(BaseChatHistorySession):
 
     def __init__(self):
         self.message_history_session = {}
+        self.agent_logs = {}  # 存储agent日志的字典
 
     def get_chat_history(
             self, session_id: str,
@@ -26,3 +29,20 @@ class InMemoryChatSession(BaseChatHistorySession):
 
     def clean_session(self):
         self.message_history_session = {}
+        self.agent_logs = {}
+
+    def add_agent_logs(
+            self,
+            session_id: str,
+            logs: dict,
+            expire_time: int = None  # in_memory 不需要过期时间
+    ) -> Any:
+        """存储 agent 日志到内存"""
+        self.agent_logs[session_id] = logs
+
+    def get_agent_logs(
+            self,
+            session_id: str
+    ) -> dict | list:
+        """获取 agent 日志"""
+        return self.agent_logs.get(session_id, {})

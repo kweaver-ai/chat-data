@@ -21,7 +21,7 @@ inputs: dict = {
         ]
 
     },
-    "ad_appid": "Nr8KsyyoK8x8B1Nk-vO",
+    "ad_appid": "",
     "kg_id": 56,
     "entity2service": {
         "businessobject": {

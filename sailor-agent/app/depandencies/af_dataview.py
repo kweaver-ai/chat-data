@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
-# @Author:  Lareina.guo@xxx.cn
+# @Author:  Lareina.guo@aishu.cn
 # @Date: 2024-6-7
 import json
 from typing import Any, List, Union
 import jieba
 
-from data_retrieval.api.af_api import Services
-from data_retrieval.api.error import AfDataSourceError, VirEngineError, FrontendColumnError, FrontendSampleError
-from data_retrieval.datasource.db_base import DataSource
-from data_retrieval.logs.logger import logger
-from data_retrieval.parsers.text2sql_parser import RuleBaseSource
-from data_retrieval.datasource.dimension_reduce import DimensionReduce
-from data_retrieval.sessions.redis_session import RedisConnect
-from data_retrieval.utils.stop_word import get_default_stop_words
+from app.api.af_api import Services
+from app.api.error import AfDataSourceError, VirEngineError, FrontendColumnError, FrontendSampleError
+from app.datasource.db_base import DataSource
+from app.logs.logger import logger
+# from data_retrieval.parsers.text2sql_parser import RuleBaseSource
+# from data_retrieval.datasource.dimension_reduce import DimensionReduce
+# from data_retrieval.sessions.redis_session import RedisConnect
+from app.utils.stop_word import get_default_stop_words
 from config import settings
 
 
@@ -180,22 +180,22 @@ class AFDataSource(DataSource):
         self.model_data_view_fields = self.model_data_view_fields
         self.special_data_view_fields = self.special_data_view_fields
 
-        if self.redis_client is None:
-            self.redis_client = RedisConnect().connect()
+        # if self.redis_client is None:
+        #     self.redis_client = RedisConnect().connect()
 
     def get_rule_base_params(self):
-        tables = []
-        en2types = {}
-        try:
-            for view_id in self.view_list:
-                column = self.service.get_view_column_by_id(view_id, headers=self.headers)
-                totype, column_name, table, zh_table = get_view_en2type(column)
-                tables.append(table)
-                en2types[table] = totype
-        except AfDataSourceError as e:
-            raise FrontendColumnError(e) from e
-        rule_base = RuleBaseSource(tables=tables, en2types=en2types)
-        return rule_base
+        # tables = []
+        # en2types = {}
+        # try:
+        #     for view_id in self.view_list:
+        #         column = self.service.get_view_column_by_id(view_id, headers=self.headers)
+        #         totype, column_name, table, zh_table = get_view_en2type(column)
+        #         tables.append(table)
+        #         en2types[table] = totype
+        # except AfDataSourceError as e:
+        #     raise FrontendColumnError(e) from e
+        # rule_base = RuleBaseSource(tables=tables, en2types=en2types)
+        return None
 
     def get_metadata_async(self, identities: Union[List, str] = None) -> List[Any]:
         """Get meta information
@@ -507,6 +507,10 @@ class AFDataSource(DataSource):
             source = view_source_reshape(asset)
             description = view_infos[view_id]
             detail = get_view_schema_of_table(source, column, zh_table, description["description"])
+            detail["department_id"] = description.get("department_id", "")
+            detail["department"] = description.get("department", "")
+            detail["info_system_id"] = description.get("info_system_id", "")
+            detail["info_system"] = description.get("info_system", "")
             details.append(detail)
             view_schema_infos[view_id] = asset["view_source_catalog"]
 
@@ -516,6 +520,54 @@ class AFDataSource(DataSource):
         }
 
         return result
+
+    def get_meta_sample_data_v3(self):
+        details = []
+        column_infos = dict()
+        view_infos = dict()
+        view_schema_infos = dict()
+
+        for view_id in self.view_list:
+
+            view_info = self.service.get_view_details_by_id(view_id, headers=self.headers)
+            view_info = {
+                 "table_id": view_info['datasource_id'],
+                 "table_name": view_info['technical_name'],
+                 "table_business_name": view_info['business_name'],
+                 "table_description": view_info['description'],
+                 "fields": [
+                     {"field_id": "f001", "field_name": "user_id", "field_business_name": "用户ID",
+                      "field_type": "varchar", "field_description": ""}
+                 ]
+            }
+            fields = [
+
+            ]
+            columns = self.service.get_view_column_by_id(view_id, headers=self.headers)
+            for column in columns["fields"]:
+                fields.append({"field_id": column["id"],
+                               "field_name": column['technical_name'],
+                               "field_business_name": column['business_name'],
+                               "field_type": column['data_type'],
+                               "field_description": column['comment']})
+            view_info["fields"] = fields
+            details.append(view_info)
+
+        result = {
+            "detail": details,
+        }
+
+        return result
+
+    def get_data_view_sample(self):
+        sample_details = dict()
+        for view_id in self.view_list:
+            sample_data = self.service.get_data_view_sample_data(view_id, headers=self.headers)
+            sample_details[view_id] = sample_data
+
+        return sample_details
+
+
 
     def get_meta_sample_data_4_seeker(self, input_query="", view_limit=5, dimension_num_limit=30, with_sample=True,
                                       extract_info=dict()) -> dict:
@@ -680,6 +732,9 @@ class AFDataSource(DataSource):
         if with_sample:
             result["sample"] = samples
         return result
+
+    def get_sample_data(self, view_id, with_sample=False):
+        pass
 
     def query_correction(self, query: str) -> str:
         return query

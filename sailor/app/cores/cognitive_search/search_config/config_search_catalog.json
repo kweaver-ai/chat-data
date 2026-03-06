@@ -1,0 +1,91 @@
+{
+  "result_types": [
+    "datacatalog",
+    "form_view"
+  ],
+  "entity_weight": {
+    "datacatalog": 2,
+    "catalogtag": 1,
+    "datasource": 1,
+    "department": 1,
+    "info_system": 1,
+    "form_view": 1,
+    "metadataschema": 1,
+    "form_view_field": 1,
+    "data_explore_report": 1,
+    "response_field": 1,
+    "service": 1,
+    "customized_category": 1,
+    "customized_category_node": 1,
+    "domain": 1,
+    "subdomain": 1,
+    "data_catalog_column": 1
+  },
+  "entity_limit": 1000,
+  "entity2service": {
+    "datacatalog": {
+      "relation": "",
+      "weight": 4
+    },
+    "form_view": {
+      "relation": "编目",
+      "weight": 1.9
+    },
+    "form_view_field": {
+      "relation": "包含",
+      "weight": 1.8
+    },
+    "data_explore_report": {
+      "relation": "包含",
+      "weight": 1.8
+    },
+    "catalogtag": {
+      "relation": "打标",
+      "weight": 1.5
+    },
+    "department": {
+      "relation": "管理",
+      "weight": 1.3
+    },
+    "info_system": {
+      "relation": "关联",
+      "weight": 1.2
+    },
+    "datasource": {
+      "relation": "包含",
+      "weight": 1
+    },
+    "metadataschema": {
+      "relation": "包含",
+      "weight": 1
+    },
+    "service": {
+      "relation": "编目",
+      "weight": 1.2
+    },
+    "response_field": {
+      "relation": "包含",
+      "weight": 1
+    },
+    "customized_category": {
+      "relation": "包含",
+      "weight": 1
+    },
+    "customized_category_node": {
+      "relation": "属于",
+      "weight": 1.2
+    },
+    "domain": {
+      "relation": "包含",
+      "weight": 1
+    },
+    "subdomain": {
+      "relation": "包含",
+      "weight": 1.2
+    },
+    "data_catalog_column": {
+      "relation": "包含",
+      "weight": 1.3
+    }
+  }
+}

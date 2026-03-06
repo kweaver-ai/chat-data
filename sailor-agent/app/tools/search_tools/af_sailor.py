@@ -10,15 +10,17 @@ from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackMan
 
 from data_retrieval.api.base import API, HTTPMethod
 from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
-from data_retrieval.settings import get_settings
+from data_retrieval.sessions import BaseChatHistorySession
 from app.utils.password import get_authorization
 from data_retrieval.errors import ToolFatalError
+from app.session.redis_session import RedisHistorySession
+from app.session.in_memory_session import InMemoryChatSession
+from app.tools.base import ToolMultipleResult
+from config import settings
 
 from data_retrieval.tools.base import (
     ToolName,
     ToolResult,
-    ToolMultipleResult,
     AFTool,
     construct_final_answer,
     async_construct_final_answer,
@@ -26,7 +28,17 @@ from data_retrieval.tools.base import (
 )
 
 
-settings = get_settings()
+# settings = get_settings()
+
+
+def CreateSession(session_type: str):
+    """创建会话对象，使用本地的 settings 配置"""
+    if session_type == "redis":
+        return RedisHistorySession()
+    elif session_type == "in_memory":
+        return InMemoryChatSession()
+    else:
+        raise ValueError(f"不支持的 session_type: {session_type}")
 
 
 class AfSailorToolModel(BaseModel):
@@ -36,6 +48,57 @@ class AfSailorToolModel(BaseModel):
         description="用户在多轮对话中重复强调的信息"
     )
 
+class AfSailorToolResult(ToolResult):
+    def __init__(
+        self,
+        cites=None,
+        table: str | dict = None,
+        new_table: str | dict = None,
+        df2json: str = None,
+        text: str = None,
+        explain: str = None,
+        chart: str | dict = None,
+        new_chart: str | dict = None,
+        related_info: str | dict = None
+    ):
+        super().__init__(
+            cites=cites,
+            table=table,
+            new_table=new_table,
+            df2json=df2json,
+            text=text,
+            explain=explain,
+            chart=chart,
+            new_chart=new_chart
+        )
+        self.related_info = related_info
+
+    def __repr__(self):
+        return dedent(
+            f"""
+             AfSailorToolResult(
+                 cites={self.cites},
+                 table={self.table}, 
+                 df2json={self.df2json}, 
+                 text={self.text}, 
+                 explain={self.explain},
+                 chart={self.chart},
+                 new_table={self.new_table},
+                 new_chart={self.new_chart},
+                 related_info={self.related_info}
+             )
+        """
+        )
+
+    def to_ori_json(self):
+        result = super().to_ori_json()
+        result["related_info"] = self.related_info
+        return result
+
+    def to_json(self):
+        base_result = super().to_json()
+        base_result["result"]["res"]["related_info"] = self.related_info
+        return base_result
 
 class AfSailorTool(AFTool):
     name: str = ToolName.from_sailor.value
@@ -88,6 +151,7 @@ class AfSailorTool(AFTool):
             raise ValueError("question 参数是必需的，不能为空")
         
         self.parameter["query"] = question
+        self.parameter["af_editions"] = kwargs.get("af_editions", "catalog")
         extraneous_info = kwargs.get("extraneous_information")
         if extraneous_info is not None and extraneous_info:
             self.parameter["query"] += extraneous_info
@@ -104,7 +168,7 @@ class AfSailorTool(AFTool):
 
     def _parser(
         self,
-        result: ToolResult
+        result: AfSailorToolResult
     ):
         # 刷新结果缓存key
         self.refresh_result_cache_key()
@@ -119,10 +183,56 @@ class AfSailorTool(AFTool):
             "result_cache_key": self._result_cache_key
         }
         # 将执行结果保存，暂时支持 redis
-        self.session.add_agent_logs(
-            self._result_cache_key,
-            logs=res_json
-        )
+        try:
+            logger.info(f"准备调用 add_agent_logs，session_id: {self._result_cache_key}")
+            logger.info(f"session 对象类型: {type(self.session)}")
+            logger.info(f"session 对象: {self.session}")
+            
+            # 检查 session 是否有 client 属性
+            if hasattr(self.session, 'client'):
+                logger.info(f"session.client 存在，类型: {type(self.session.client)}")
+                # 尝试测试 Redis 连接
+                try:
+                    ping_result = self.session.client.ping()
+                    logger.info(f"Redis ping 结果: {ping_result}")
+                except Exception as ping_e:
+                    logger.error(f"Redis ping 失败: {ping_e}")
+            else:
+                logger.warning("session 对象没有 client 属性")
+            
+            # 检查日志数据
+            logger.info(f"准备写入的 logs 数据大小: {len(json.dumps(res_json, ensure_ascii=False))} 字节")
+            logger.debug(f"准备写入的 logs 内容: {res_json}")
+            
+            result = self.session.add_agent_logs(
+                session_id=self._result_cache_key,
+                logs=res_json
+            )
+            logger.info(f"add_agent_logs 执行完成，返回值: {result}")
+            
+            # 验证数据是否真的写入了 Redis
+            try:
+                if hasattr(self.session, 'get_agent_logs'):
+                    retrieved = self.session.get_agent_logs(self._result_cache_key)
+                    if retrieved:
+                        logger.info(f"验证：成功从 Redis 读取数据，数据大小: {len(json.dumps(retrieved, ensure_ascii=False))} 字节")
+                    else:
+                        logger.warning(f"验证：从 Redis 读取的数据为空，可能写入失败")
+                elif hasattr(self.session, 'client'):
+                    # 直接使用 client 验证
+                    retrieved = self.session.client.get(self._result_cache_key)
+                    if retrieved:
+                        logger.info(f"验证：成功从 Redis 读取数据（直接使用 client），数据大小: {len(retrieved)} 字节")
+                    else:
+                        logger.warning(f"验证：从 Redis 读取的数据为空（直接使用 client），可能写入失败")
+            except Exception as verify_e:
+                logger.error(f"验证 Redis 数据时出错: {verify_e}")
+                
+        except Exception as e:
+            logger.error(f"add_agent_logs 执行失败: {e}")
+            import traceback
+            logger.error(f"异常详情: {traceback.format_exc()}")
+            # 不抛出异常，避免影响主流程，但记录错误
 
         # 删除 cites 中的子图信息，防止大模型看到
         for cite in res_json.get("cites", []):
@@ -144,12 +254,12 @@ class AfSailorTool(AFTool):
             if isinstance(result, str):
                 result = json.loads(result)
             logger.debug(f"Search API Response: {result}")
-            result = ToolResult(**result["result"]["res"])
+            result = AfSailorToolResult(**result["result"]["res"])
             result = self._parser(result)
         except Exception as e:
             tb_str = traceback.format_exc()
             logger.info(f"Sailor工具执行错误，实际错误为{tb_str}")
-            result = ToolResult(
+            result = AfSailorToolResult(
                 text=["抱歉，可能由于网络延迟或当前服务器繁忙，当前回答尚未完成。"]
             ).to_json()
         return result
@@ -164,6 +274,9 @@ class AfSailorTool(AFTool):
         try:
             api = self._service(**kwargs)
             result = await api.call_async()
+            logger.info(f'type of search tool result: {type(result)}')
+            logger.info(f'search tool result: {result}')
+
             if not result:
                 return {
                     "text": ["没有找到对应的数据资源"],
@@ -171,12 +284,12 @@ class AfSailorTool(AFTool):
             if isinstance(result, str):
                 result = json.loads(result)
             logger.debug(f"Search API Response: {result}")
-            result = ToolResult(**result.get("result", {}).get("res", {}))
+            result = AfSailorToolResult(**result.get("result", {}).get("res", {}))
             result = self._parser(result)
         except Exception as e:
             tb_str = traceback.format_exc()
             logger.info(f"Sailor工具执行错误，实际错误为{tb_str}")
-            result = ToolResult(
+            result = AfSailorToolResult(
                 text=["工具执行错误，请重新提问。"]
             ).to_json()
         return result
@@ -341,7 +454,12 @@ class AfSailorTool(AFTool):
                                                 "type": "string",
                                                 "description": "用户在多轮对话中重复强调的信息",
                                                 "default": ""
-                                            }
+                                            },
+                                            "af_editions": {
+                                                "type": "string",
+                                                "description": "数据版本类型，数据目录、数据资源",
+                                                "default": "catalog"
+                                            },
                                         },
                                         "required": ["question"]
                                     }
@@ -425,7 +543,7 @@ class AfSailorTool(AFTool):
 #
 #     def _parser(
 #             self,
-#             result: ToolResult
+#             result: AfSailorToolResult
 #     ):
 #         self.refresh_result_cache_key()
 #         logger.info(f"_parser 调用 - 对象ID: {id(self)}, 新缓存键: {self._result_cache_key}")
@@ -459,13 +577,13 @@ class AfSailorTool(AFTool):
 #             if isinstance(result, str):
 #                 result = json.loads(result)
 #             logger.debug(f"Search API Response: {result}")
-#             result = ToolResult(**result["result"]["res"])
+#             result = AfSailorToolResult(**result["result"]["res"])
 #             result = self._parser(result)
 #             return result
 #         except Exception as e:
 #             tb_str = traceback.format_exc()
 #             logger.info(f"Sailor工具执行错误，实际错误为{tb_str}")
-#             result = ToolResult(
+#             result = AfSailorToolResult(
 #                 text=["抱歉，可能由于网络延迟或当前服务器繁忙，当前回答尚未完成。"]
 #             ).to_json()
 #             return result
@@ -529,13 +647,13 @@ class AfSailorTool(AFTool):
 #             if isinstance(result, str):
 #                 result = json.loads(result)
 #             logger.debug(f"Search API Response: {result}")
-#             result = ToolResult(**result.get("result", {}).get("res", {}))
+#             result = AfSailorToolResult(**result.get("result", {}).get("res", {}))
 #             result = self._parser(result)
 #             return result
 #         except Exception as e:
 #             tb_str = traceback.format_exc()
 #             logger.info(f"Sailor工具执行错误，实际错误为{tb_str}")
-#             result = ToolResult(
+#             result = AfSailorToolResult(
 #                 text=["工具执行错误，请重新提问。"]
 #             ).to_json()
 #             return result

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import time
 from textwrap import dedent
 from typing import Optional, Type, Any, List, Dict
 from collections import OrderedDict
@@ -13,22 +14,23 @@ from langchain_core.prompts import (
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
+from data_retrieval.sessions import BaseChatHistorySession
 from data_retrieval.errors import ToolFatalError
 from data_retrieval.utils.model_types import ModelType4Prompt
 from data_retrieval.parsers.base import BaseJsonParser
-# from data_retrieval.datasource.af_dataview import AFDataSource
 from app.depandencies.af_dataview import AFDataSource
-from data_retrieval.datasource.af_indicator import AFIndicator
+from app.depandencies.af_indicator import AFIndicator
+from app.datasource.af_data_catalog import AFDataCatalog
 from data_retrieval.utils.llm import CustomChatOpenAI
 from data_retrieval.settings import get_settings
 from app.utils.password import get_authorization
 from app.session.redis_session import RedisHistorySession
+from app.session.in_memory_session import InMemoryChatSession
+from app.tools.base import ToolMultipleResult
 from config import settings
 
 from data_retrieval.tools.base import (
     ToolName,
-    ToolMultipleResult,
     LLMTool,
     _TOOL_MESSAGE_KEY,
     construct_final_answer,
@@ -38,6 +40,16 @@ from data_retrieval.tools.base import (
 from .prompts.datasource_filter_prompt import DataSourceFilterPrompt
 
 _SETTINGS = get_settings()
+
+def CreateSession(session_type: str):
+    if session_type == "redis":
+        return RedisHistorySession()
+    elif session_type == "in_memory":
+        return InMemoryChatSession()
+    elif session_type == "":
+        return None
+    else:
+        raise ValueError(f"不支持的 session_type: {session_type}")
 
 
 class DataSourceDescSchema(BaseModel):
@@ -89,9 +101,9 @@ class DataSourceFilterTool(LLMTool):
             self.session = CreateSession(self.session_type)
 
     def _config_chain(
-        self,
-        data_source_list: List[dict] = [],
-        data_source_list_description: str = ""
+            self,
+            data_source_list: List[dict] = None,
+            data_source_list_description: str = ""
     ):
         self.refresh_result_cache_key()
 
@@ -154,8 +166,8 @@ class DataSourceFilterTool(LLMTool):
         search_tool_cache_key: Optional[str] = "",
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ):
-        data_view_list, metric_list = OrderedDict(), OrderedDict()
-        data_view_metadata, metric_metadata = {}, {}
+        data_view_list, metric_list, data_catalog_list = OrderedDict(), OrderedDict(), OrderedDict()
+        data_view_metadata, metric_metadata, data_catalog_metadata = {}, {}, {}
         data_source_list = []
         data_source_list_description = ""
 
@@ -169,6 +181,10 @@ class DataSourceFilterTool(LLMTool):
                 tool_res = {}
             if tool_res:
                 data_source_list = tool_res.get("cites", [])
+                # 删除 cites 中的子图信息，防止大模型看到
+                for cite in data_source_list:
+                    if "connected_subgraph" in cite:
+                        del cite["connected_subgraph"]
                 data_source_list_description = tool_res.get("description", "")
             else:
                 return {
@@ -180,6 +196,8 @@ class DataSourceFilterTool(LLMTool):
                 data_view_list[data_source["id"]] = data_source
             elif data_source["type"] == "indicator":
                 metric_list[data_source["id"]] = data_source
+            elif data_source["type"] == "data_catalog":
+                data_catalog_list[data_source["id"]] = data_source
             else:
                 return {
                     "result": f"数据资源类型错误: {data_source['type']}"
@@ -232,31 +250,56 @@ class DataSourceFilterTool(LLMTool):
             
             except Exception as e:
                 logger.error(f"获取指标元数据失败: {str(e)}")
-        
-        if not data_view_list and not metric_list:
+
+        if len(data_catalog_list) > 0:
+            catalog_source = AFDataCatalog(
+                data_catalog_list=list(data_catalog_list.keys()),
+                token=self.token,
+                user_id=self.user_id
+            )
+            catalog_metadata = catalog_source.get_meta_sample_data_v2(
+                query,
+                self.data_source_num_limit,
+                self.dimension_num_limit,
+
+            )
+
+            for k, v in data_catalog_list.items():
+                for detail in catalog_metadata["detail"]:
+                    if detail["id"] == k:
+                        v["columns"] = detail.get("columns", {})
+                        break
+
+        if not data_view_list and not metric_list and not data_catalog_list:
             return {
                 "result": f"没有找到符合要求的数据资源"
             }
 
         chain = self._config_chain(
-            data_source_list = list(data_view_list.values()) + list(metric_list.values()),
+            data_source_list = list(data_view_list.values()) + list(metric_list.values()) + list(data_catalog_list.values()),
             data_source_list_description=data_source_list_description
         )
 
         try:
+            start = time.time()
             result = await chain.ainvoke({"input": query})
-
+            logger.info("datasource filter cost {}".format(time.time() - start))
             result_datasource_list = []
 
             view_ids = [data_view["id"] for data_view in data_view_list.values()]
             metric_ids = [metric["id"] for metric in metric_list.values()]
+            data_catalog_ids = [data_catalog["id"] for data_catalog in data_catalog_list.values()]
 
             for res in result["result"]:
                 if res["id"] in view_ids:
+                    # 结果中补充 title
                     res["title"] = data_view_list[res["id"]].get("title", "")
                     result_datasource_list.append(res)
                 elif res["id"] in metric_ids:
                     res["title"] = metric_list[res["id"]].get("title", "")
+                    result_datasource_list.append(res)
+                elif res["id"] in data_catalog_ids:
+                    res["title"] = data_catalog_list[res["id"]].get("title", "")
                     result_datasource_list.append(res)
 
             logger.info(f"result_datasource_list: {result_datasource_list}")
@@ -278,6 +321,7 @@ class DataSourceFilterTool(LLMTool):
             logger.error(f"获取数据资源失败: {str(e)}")
             raise ToolFatalError(f"获取数据资源失败: {str(e)}")
 
+        # 给大模型的数据
         return {
             "result": result_datasource_list,
             "result_cache_key": self._result_cache_key
@@ -294,7 +338,7 @@ class DataSourceFilterTool(LLMTool):
         )
         if tool_res:
             log["result"] = tool_res
-
+            # 替换 cites
             if tool_res.get("cites"):
                 ans_multiple.cites = tool_res.get("cites", [])
 
@@ -334,7 +378,7 @@ class DataSourceFilterTool(LLMTool):
             background=config_dict.get("background", ""),
             session=session,
             # session_type=config_dict.get("session_type", "redis"),
-            # session_id=config_dict.get("session_id", ""),
+            session_id=config_dict.get("session_id", ""),
             data_source_num_limit=config_dict.get("data_source_num_limit", -1),
             dimension_num_limit=config_dict.get("dimension_num_limit", -1),
             with_sample=config_dict.get("with_sample", False),
@@ -379,7 +423,19 @@ class DataSourceFilterTool(LLMTool):
                                     },
                                     "config": {
                                         "type": "object",
-                                        "description": "工具配置参数"
+                                        "description": "工具配置参数",
+                                        "properties": {
+                                            "session_type": {
+                                                "type": "string",
+                                                "description": "会话类型",
+                                                "enum": ["in_memory", "redis"],
+                                                "default": "in_memory"
+                                            },
+                                            "session_id": {
+                                                "type": "string",
+                                                "description": "会话ID"
+                                            }
+                                        }
                                     },
                                     "query": {
                                         "type": "string",
