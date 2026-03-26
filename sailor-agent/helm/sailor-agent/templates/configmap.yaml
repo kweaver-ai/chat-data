@@ -1,5 +1,6 @@
 apiVersion: v1
 kind: ConfigMap
+{{- $agent := .Values.depServices.agent | default dict }}
 metadata:
   name: {{ .Values.name }}-cm
   namespace: {{ .Values.namespace }}
@@ -40,16 +41,16 @@ data:
   FINAL_READER_LLM: {{ .depServices.anyDataLLMConf.final_llm_addr | quote}}
   ML_EMBEDDING_URL: {{ .depServices.anyDataLLMConf.embedding_llm_addr | quote}}
 
-  INDICATOR_REWRITE_QUERY: {{ .depServices.agent.indicator_rewrite_query | quote}}
-  MODEL_TYPE: {{ .depServices.agent.model_type | quote}}
-  REWRITE_QUERY_MODEL_TYPE: {{ .depServices.agent.rewrite_query_model_type | quote}}
-  TEXT2METRIC_MODEL_TYPE: {{ .depServices.agent.text2metric_model_type | quote}}
-  TEXT2SQL_MODEL_TYPE: {{ .depServices.agent.text2sql_model_type | quote}}
-  TEXT2SQL_RECALL_TOP_K: {{ .depServices.agent.text2sql_recall_top_k | quote}}
-  TEXT2SQL_REWRITE_QUERY: {{ .depServices.agent.text2sql_rewrite_query | quote}}
-  TOOL_LLM_MODEL_NAME: {{ .depServices.agent.tool_llm_model_name | quote }}
-  TOOL_LLM_OPENAI_API_KEY: {{ .depServices.agent.tool_llm_openai_api_key | quote }}
-  TOOL_LLM_OPENAI_API_BASE: {{ .depServices.agent.tool_llm_openai_api_base | quote }}
+  INDICATOR_REWRITE_QUERY: {{ $agent.indicator_rewrite_query | default "" | quote}}
+  MODEL_TYPE: {{ $agent.model_type | default "" | quote}}
+  REWRITE_QUERY_MODEL_TYPE: {{ $agent.rewrite_query_model_type | default "" | quote}}
+  TEXT2METRIC_MODEL_TYPE: {{ $agent.text2metric_model_type | default "" | quote}}
+  TEXT2SQL_MODEL_TYPE: {{ $agent.text2sql_model_type | default "" | quote}}
+  TEXT2SQL_RECALL_TOP_K: {{ $agent.text2sql_recall_top_k | default "" | quote}}
+  TEXT2SQL_REWRITE_QUERY: {{ $agent.text2sql_rewrite_query | default "" | quote}}
+  TOOL_LLM_MODEL_NAME: {{ $agent.tool_llm_model_name | default "" | quote }}
+  TOOL_LLM_OPENAI_API_KEY: {{ $agent.tool_llm_openai_api_key | default "" | quote }}
+  TOOL_LLM_OPENAI_API_BASE: {{ $agent.tool_llm_openai_api_base | default "" | quote }}
 
   {{- end }}
   {{- with .Values.depServices.redis }}
