@@ -10,8 +10,8 @@ Write-Host "工作目录: $DRDir"
 
 # 来源目录列表
 SRC_DIRS=(
-#     "sailor-agent/migrations"
-    "sailor-service/migrations"
+    "../sailor-agent/migrations"
+    "../sailor-service/migrations"
 )
 
 # 数据库类型列表

@@ -10,7 +10,7 @@ echo "工作目录: $DR_DIR"
 
 # 来源目录列表
 SRC_DIRS=(
-#    "sailor-agent/migrations"
+    "../sailor-agent/migrations"
     "../sailor-service/migrations"
 )
 
