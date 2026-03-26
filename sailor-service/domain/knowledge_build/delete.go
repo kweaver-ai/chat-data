@@ -4,8 +4,8 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/util"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/infrastructure/repository/db/model"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/util"
+	"github.com/kweaver-ai/chat-data/sailor-service/infrastructure/repository/db/model"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"

@@ -11,8 +11,8 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/bsm/redislock"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/infrastructure/repository/db"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/infrastructure/repository/db"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	"github.com/redis/go-redis/v9"

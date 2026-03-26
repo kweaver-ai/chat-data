@@ -2,9 +2,9 @@ package large_language_model
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/middleware"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/models/response"
-	domain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/intelligence"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/middleware"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/models/response"
+	domain "github.com/kweaver-ai/chat-data/sailor-service/domain/intelligence"
 	"github.com/kweaver-ai/idrm-go-frame/core/transport/rest/ginx"
 )
 

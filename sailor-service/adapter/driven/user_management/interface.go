@@ -3,7 +3,7 @@ package user_management
 import (
 	"context"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/models"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/models"
 )
 
 // DrivenUserMgnt 服务处理接口

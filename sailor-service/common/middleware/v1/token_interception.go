@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/hydra"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/user_management"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/constant"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/middleware"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/models"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/hydra"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/user_management"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/constant"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/middleware"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/models"
 
 	af_trace "github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	"github.com/kweaver-ai/idrm-go-frame/core/transport/rest/ginx"

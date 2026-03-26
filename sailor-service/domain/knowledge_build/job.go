@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	ad_proxy "github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/knowledge_network"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/infrastructure/repository/db/model"
+	ad_proxy "github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/knowledge_network"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/infrastructure/repository/db/model"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	"github.com/pkg/errors"

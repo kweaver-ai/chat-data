@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
 )
 
 type GetDataMarketConfigReq struct {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
 	"github.com/kweaver-ai/idrm-go-frame/core/errorx/agcodes"
 	"github.com/kweaver-ai/idrm-go-frame/core/errorx/agerrors"
 	"github.com/kweaver-ai/idrm-go-frame/core/utils/httpclient"

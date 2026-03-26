@@ -1,7 +1,7 @@
 package impl
 
 import (
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/comprehension"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/comprehension"
 )
 
 const (

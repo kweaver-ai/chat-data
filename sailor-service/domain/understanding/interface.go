@@ -3,7 +3,7 @@ package understanding
 import (
 	"context"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/client"
+	"github.com/kweaver-ai/chat-data/sailor-service/client"
 )
 
 type UseCase interface {

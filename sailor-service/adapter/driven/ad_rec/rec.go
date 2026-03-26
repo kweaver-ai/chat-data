@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 )

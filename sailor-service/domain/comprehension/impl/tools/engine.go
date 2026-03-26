@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	engine "github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/virtualization_engine"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/util"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/comprehension"
+	engine "github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/virtualization_engine"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/util"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/comprehension"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/samber/lo"
 	"go.uber.org/zap"

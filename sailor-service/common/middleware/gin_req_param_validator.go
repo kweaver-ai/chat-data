@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/form_validator"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/form_validator"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 )
 

@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/form_validator"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/models/response"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/comprehension"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/form_validator"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/models/response"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/comprehension"
 	"github.com/kweaver-ai/idrm-go-frame/core/transport/rest/ginx"
 )
 

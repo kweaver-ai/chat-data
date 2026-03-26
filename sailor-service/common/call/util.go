@@ -9,8 +9,8 @@ import (
 	"strconv"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/middleware"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/middleware"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/kweaver-ai/idrm-go-frame/core/transport/rest"
 	"go.uber.org/zap"

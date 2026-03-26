@@ -1,7 +1,7 @@
 package opensearch
 
 import (
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
 	log "github.com/kweaver-ai/idrm-go-frame/core/logx/zapx"
 	"github.com/olivere/elastic/v7"
 )

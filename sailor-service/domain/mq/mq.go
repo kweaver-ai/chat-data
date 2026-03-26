@@ -1,11 +1,11 @@
 package mq
 
 import (
-	//"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/data_catalog"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/data_change_mq"
-	//"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/data_view"
-	//"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/interface_svc"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
+	//"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/data_catalog"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/data_change_mq"
+	//"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/data_view"
+	//"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/interface_svc"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
 
 	"github.com/kweaver-ai/TelemetrySDK-Go/exporter/v2/ar_trace"
 	"github.com/kweaver-ai/idrm-go-frame/core/transport/mq/kafkax"

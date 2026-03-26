@@ -33,8 +33,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
 )
 
 type AD interface {

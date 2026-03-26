@@ -12,8 +12,8 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/constant"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/constant"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	"github.com/pkg/errors"

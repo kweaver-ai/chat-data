@@ -6,9 +6,9 @@ import (
 	"errors"
 	"net/http"
 
-	es "github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/es_subject_model"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/opensearch"
-	es_common_object "github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/es"
+	es "github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/es_subject_model"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/opensearch"
+	es_common_object "github.com/kweaver-ai/chat-data/sailor-service/common/es"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	"github.com/olivere/elastic/v7"

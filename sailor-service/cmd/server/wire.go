@@ -5,11 +5,11 @@ package server
 
 import (
 	"github.com/google/wire"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/infrastructure"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain"
+	"github.com/kweaver-ai/chat-data/sailor-service/infrastructure"
 	af_go_frame "github.com/kweaver-ai/idrm-go-frame"
 )
 

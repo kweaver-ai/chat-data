@@ -3,7 +3,7 @@ package settings
 import (
 	"context"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/form_validator"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/form_validator"
 	conf "github.com/kweaver-ai/idrm-go-frame/core/config"
 	"github.com/kweaver-ai/idrm-go-frame/core/logx/zapx"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"

@@ -3,7 +3,7 @@ package knowledge_build
 import (
 	"context"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/models/response"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/models/response"
 )
 
 type GraphBuildTaskParam struct {

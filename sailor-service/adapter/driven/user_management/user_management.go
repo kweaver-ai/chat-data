@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/models"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/models"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/kweaver-ai/idrm-go-frame/core/utils/httpclient"
 	"github.com/mitchellh/mapstructure"

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin/binding"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
 	"github.com/kweaver-ai/idrm-go-frame/core/transport/rest/ginx"
 
 	"github.com/gin-gonic/gin"

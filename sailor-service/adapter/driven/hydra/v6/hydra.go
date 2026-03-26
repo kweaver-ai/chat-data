@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	jsoniter "github.com/json-iterator/go"
-	Ihydra "github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/hydra"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
+	Ihydra "github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/hydra"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	"go.uber.org/zap"

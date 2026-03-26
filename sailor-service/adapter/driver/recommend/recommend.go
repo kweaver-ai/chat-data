@@ -1,6 +1,6 @@
 package recommend
 
-import domain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/recommend"
+import domain "github.com/kweaver-ai/chat-data/sailor-service/domain/recommend"
 
 type Service struct {
 	uc domain.UseCase

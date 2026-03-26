@@ -103,7 +103,7 @@
 1. **克隆仓库**
 ```bash
 git clone <repository-url>
-cd dip-for-data-resource
+cd chat-data
 ```
 
 2. **配置环境变量**

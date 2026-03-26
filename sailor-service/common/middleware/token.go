@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/constant"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/models"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/constant"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/models"
 )
 
 // contextKeyBearerToken 是从 context.Context 获取 BearerToken 的 key。

@@ -1,9 +1,9 @@
 package impl
 
 import (
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/comprehension"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/comprehension/impl/collection"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/comprehension/impl/concepts"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/comprehension"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/comprehension/impl/collection"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/comprehension/impl/concepts"
 )
 
 const (

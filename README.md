@@ -102,7 +102,7 @@ Automatically classify and tag data resources for better organization and discov
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
-cd dip-for-data-resource
+cd chat-data
 ```
 
 2. **Configure environment variables**

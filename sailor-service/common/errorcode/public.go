@@ -1,7 +1,7 @@
 package errorcode
 
 import (
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/constant"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/constant"
 )
 
 // Model Name

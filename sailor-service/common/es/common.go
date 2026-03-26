@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/opensearch"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/opensearch"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/olivere/elastic/v7"
 )

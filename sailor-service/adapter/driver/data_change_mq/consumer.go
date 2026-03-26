@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/configuration_center"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/es_subject_model"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/gorm/knowledge_datasource"
-	ad_proxy "github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/knowledge_network"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/form_validator"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/knowledge_build"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/configuration_center"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/es_subject_model"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/gorm/knowledge_datasource"
+	ad_proxy "github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/knowledge_network"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/form_validator"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/knowledge_build"
 
-	//domain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/data_catalog"
+	//domain "github.com/kweaver-ai/chat-data/sailor-service/domain/data_catalog"
 	"encoding/json"
 
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"

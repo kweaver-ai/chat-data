@@ -1,6 +1,6 @@
 package copilot
 
-import domain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/copilot"
+import domain "github.com/kweaver-ai/chat-data/sailor-service/domain/copilot"
 
 type Service struct {
 	uc domain.UseCase

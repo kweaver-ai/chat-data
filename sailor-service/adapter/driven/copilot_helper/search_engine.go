@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/constant"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/constant"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"

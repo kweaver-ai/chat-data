@@ -3,14 +3,14 @@ package data_change_mq
 import (
 	"context"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/es_subject_model"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/es_subject_model"
 
 	"strconv"
 	"strings"
 
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	"github.com/pkg/errors"
-	//"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
+	//"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
 	//"github.com/kweaver-ai/idrm-go-frame/core/telemetry/trace"
 	//"fmt"
 	//"github.com/pkg/errors"

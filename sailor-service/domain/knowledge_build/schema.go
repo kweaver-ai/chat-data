@@ -5,11 +5,11 @@ import (
 	"regexp"
 
 	"github.com/jinzhu/copier"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/knowledge_network"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/errorcode"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/models/response"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/util"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/knowledge_network"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/errorcode"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/models/response"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/util"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"github.com/samber/lo"
 )

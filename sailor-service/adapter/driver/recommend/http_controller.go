@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/middleware"
-	domain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/recommend"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/middleware"
+	domain "github.com/kweaver-ai/chat-data/sailor-service/domain/recommend"
 	"github.com/kweaver-ai/idrm-go-frame/core/transport/rest/ginx"
 )
 

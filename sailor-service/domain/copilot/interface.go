@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/adp_agent_factory"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/client"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/adp_agent_factory"
+	"github.com/kweaver-ai/chat-data/sailor-service/client"
 	"github.com/samber/lo"
 )
 

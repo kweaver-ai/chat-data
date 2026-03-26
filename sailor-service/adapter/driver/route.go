@@ -3,23 +3,23 @@ package driver
 import (
 	"net/http"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/alg_server"
-	comprehension "github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/comprehension/v1"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/copilot"
-	understanding "github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/understanding/v1"
-	kbDomain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/knowledge_build"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/alg_server"
+	comprehension "github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/comprehension/v1"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/copilot"
+	understanding "github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/understanding/v1"
+	kbDomain "github.com/kweaver-ai/chat-data/sailor-service/domain/knowledge_build"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/knowledge_build"
-	llm "github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/large_language_model"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driver/recommend"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/middleware"
-	kgDomain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/alg_server"
-	copilotDomain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/copilot"
-	aiDomain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/intelligence"
-	recommendDomain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/recommend"
-	udDomain "github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/understanding"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/knowledge_build"
+	llm "github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/large_language_model"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driver/recommend"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/middleware"
+	kgDomain "github.com/kweaver-ai/chat-data/sailor-service/domain/alg_server"
+	copilotDomain "github.com/kweaver-ai/chat-data/sailor-service/domain/copilot"
+	aiDomain "github.com/kweaver-ai/chat-data/sailor-service/domain/intelligence"
+	recommendDomain "github.com/kweaver-ai/chat-data/sailor-service/domain/recommend"
+	udDomain "github.com/kweaver-ai/chat-data/sailor-service/domain/understanding"
 )
 
 var _ IRouter = (*Router)(nil)

@@ -8,11 +8,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/adapter/driven/knowledge_network"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/settings"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/common/util"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/comprehension"
-	"github.com/kweaver-ai/dip-for-data-resource/sailor-service/domain/knowledge_build"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/knowledge_network"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/settings"
+	"github.com/kweaver-ai/chat-data/sailor-service/common/util"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/comprehension"
+	"github.com/kweaver-ai/chat-data/sailor-service/domain/knowledge_build"
 	"github.com/kweaver-ai/idrm-go-frame/core/telemetry/log"
 	"go.uber.org/zap"
 )
