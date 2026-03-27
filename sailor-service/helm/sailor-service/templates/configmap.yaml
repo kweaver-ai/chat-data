@@ -1,6 +1,34 @@
 ---
 apiVersion: v1
 kind: ConfigMap
+{{- $opensearch := .Values.depServices.opensearch | default dict }}
+{{- $opensearchReadURI := $opensearch.readUri }}
+{{- $opensearchWriteURI := $opensearch.writeUri }}
+{{- if and $opensearch.protocol $opensearch.host $opensearch.port }}
+{{- $opensearchReadURI = printf "%s://%s:%v" $opensearch.protocol $opensearch.host $opensearch.port }}
+{{- $opensearchWriteURI = printf "%s://%s:%v" $opensearch.protocol $opensearch.host $opensearch.port }}
+{{- end }}
+{{- $opensearchUsername := $opensearch.user | default $opensearch.username }}
+{{- $mq := .Values.depServices.mq | default dict }}
+{{- $kafkaConf := .Values.depServices.kafkaConf | default dict }}
+{{- $kafkaVersion := $mq.version | default $kafkaConf.version }}
+{{- $kafkaURI := $kafkaConf.uri }}
+{{- if and $mq.mqHost $mq.mqPort }}
+{{- $kafkaURI = printf "%s:%v" $mq.mqHost $mq.mqPort }}
+{{- end }}
+{{- $kafkaClientID := $mq.clientId | default $kafkaConf.clientId }}
+{{- $kafkaUsername := $mq.auth.username | default $kafkaConf.username }}
+{{- $kafkaPassword := $mq.auth.password | default $kafkaConf.password }}
+{{- $kafkaGroupID := $mq.groupId | default $kafkaConf.groupId }}
+{{- $redis := .Values.depServices.redis | default dict }}
+{{- $redisConnectInfo := $redis.connectInfo | default dict }}
+{{- $redisAddr := $redis.addr }}
+{{- if and $redisConnectInfo.sentinelHost $redisConnectInfo.sentinelPort }}
+{{- $redisAddr = printf "%s:%v" $redisConnectInfo.sentinelHost $redisConnectInfo.sentinelPort }}
+{{- end }}
+{{- $redisPassword := $redisConnectInfo.password | default $redis.password }}
+{{- $redisSentinelPassword := $redisConnectInfo.sentinelPassword | default $redis.sentinelPassword }}
+{{- $redisMasterName := $redisConnectInfo.masterGroupName | default $redis.masterName }}
 metadata:
   name: {{ .Values.configMap.name }}
   namespace: {{ .Values.namespace }}
@@ -82,10 +110,10 @@ data:
       authServiceHost: {{.Values.depServices.authService.schema}}://{{.Values.depServices.authService.host}}:{{.Values.depServices.authService.port}}
 
     opensearch:
-      readUri: {{.Values.depServices.opensearch.readUri}}
-      writeUri: {{.Values.depServices.opensearch.writeUri}}
-      username: {{.Values.depServices.opensearch.username}}
-      password: {{.Values.depServices.opensearch.password}}
+      readUri: {{ $opensearchReadURI }}
+      writeUri: {{ $opensearchWriteURI }}
+      username: {{ $opensearchUsername }}
+      password: {{ $opensearch.password }}
       sniff: true
       healthcheck: true
       debug: true
@@ -113,12 +141,12 @@ data:
       url: {{.Values.depServices.afSailorAgent.schema}}://{{.Values.depServices.afSailorAgent.host}}:{{.Values.depServices.afSailorAgent.port}}
 
     kafkaConf:
-      version: {{.Values.depServices.kafkaConf.version}}
-      uri: {{.Values.depServices.kafkaConf.uri}}
-      clientId: {{.Values.depServices.kafkaConf.clientId}}
-      username: {{.Values.depServices.kafkaConf.username}}
-      password: {{.Values.depServices.kafkaConf.password}}
-      groupId: {{.Values.depServices.kafkaConf.groupId}}
+      version: {{ $kafkaVersion }}
+      uri: {{ $kafkaURI }}
+      clientId: {{ $kafkaClientID }}
+      username: {{ $kafkaUsername }}
+      password: {{ $kafkaPassword }}
+      groupId: {{ $kafkaGroupID }}
 
     oauth:
       hydraAdmin: {{.Values.depServices.hydraService.schema}}://{{.Values.depServices.hydraService.host}}:{{.Values.depServices.hydraService.port}}
@@ -257,11 +285,11 @@ data:
       cognitiveSearchDataResourceSubgraphEntitySearchConfigId: cognitive-search-data-resource-subgraph-entity-analysis
 
     redis:
-      addr: {{.Values.depServices.redis.addr}}
+      addr: {{ $redisAddr }}
       clientName: {{.Values.depServices.redis.clientName}}
       DB: {{.Values.depServices.redis.db}}
-      password: {{.Values.depServices.redis.password}}
-      sentinelPassword: {{.Values.depServices.redis.sentinelPassword}}
+      password: {{ $redisPassword }}
+      sentinelPassword: {{ $redisSentinelPassword }}
       maxRetries: {{.Values.depServices.redis.maxRetries}}
       minRetryBackoff: {{.Values.depServices.redis.minRetryBackoff}}
       maxRetryBackoff: {{.Values.depServices.redis.maxRetryBackoff}}
@@ -274,4 +302,4 @@ data:
       maxIdleConns: {{.Values.depServices.redis.maxIdleConns}}
       connMaxIdleTime: {{.Values.depServices.redis.connMaxIdleTime}}
       connMaxLifetime: {{.Values.depServices.redis.connMaxLifetime}}
-      masterName: {{.Values.depServices.redis.masterName}}
+      masterName: {{ $redisMasterName }}
