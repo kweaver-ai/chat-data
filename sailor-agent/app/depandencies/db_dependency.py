@@ -22,16 +22,19 @@ def get_engine():
             dbschema=database
         )
     else:
-
         sqlalchemy_database_uri = 'mysql+pymysql://{user}:{passwd}@{host}/{database}?charset=utf8'.format(
             user=user,
             passwd=passwd,  # 特殊字符@处理
             host=host,
             database=database
         )
-    _engine = create_engine(sqlalchemy_database_uri,
-                            poolclass=NullPool,
-                            echo=True)
+
+    # 生产环境不启用 SQLAlchemy echo，避免所有 SQL 及参数直接打到日志中
+    _engine = create_engine(
+        sqlalchemy_database_uri,
+        poolclass=NullPool,
+        echo=False,
+    )
     return _engine
 
 # 创建全局的SessionLocal类

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 import json
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 
 prompt_template_cn = """
 # ROLE

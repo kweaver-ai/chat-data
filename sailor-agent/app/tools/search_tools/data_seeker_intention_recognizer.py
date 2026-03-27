@@ -12,22 +12,22 @@ from langchain_core.prompts import (
 )
 from langchain_core.messages import SystemMessage
 
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
-from data_retrieval.errors import ToolFatalError
-from data_retrieval.utils.model_types import ModelType4Prompt
-from data_retrieval.parsers.base import BaseJsonParser
-from data_retrieval.api.ad_api import (
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession, CreateSession
+from app.errors import ToolFatalError
+from app.utils.model_types import ModelType4Prompt
+from app.parsers.base import BaseJsonParser
+from app.api.ad_api import (
     ad_builder_get_kg_info,
     ad_builder_get_kg_info_async,
     ad_opensearch_with_kgid_connector_async,
     ad_opensearch_with_kgid_connector,
     AD_CONNECT
 )
-from data_retrieval.utils.llm import CustomChatOpenAI
-from data_retrieval.settings import get_settings
+from app.utils.llm import CustomChatOpenAI
+from config import get_settings
 
-from data_retrieval.tools.base import (
+from app.tools.base import (
     ToolName,
     # QueryIntentionName,
     ToolMultipleResult,

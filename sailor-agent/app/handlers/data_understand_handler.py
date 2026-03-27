@@ -18,7 +18,7 @@ from app.routers.agent_temp_router import DataUnderstandRouter
 from app.utils.get_token import get_token
 from app.service.task_service import TaskService, TaskStatus
 from app.service.kafka_service import KafkaService
-from data_retrieval.logs.logger import logger
+from app.logs.logger import logger
 
 
 # 创建数据理解工具路由
@@ -168,7 +168,7 @@ def _transform_result_to_kafka_format(
         form_view: 输入的视图对象（支持新格式：view_id等，也兼容旧格式：form_view_id等）
         semantic_result: 语义补全结果（可选）
         business_result: 业务对象识别结果（可选）
-        request_type: 请求类型（full_understanding 或 regenerate_business_objects）
+        request_type: 请求类型（full_understanding 或 regenerate_business_objects 或者 semantic_analysis）
         message_id: 消息ID（可选）
         status: 状态（success 或 failed）
         error: 错误信息（可选），格式为 {"code": "错误代码", "message": "错误消息"}
@@ -584,6 +584,15 @@ async def _execute_semantic_and_business_analysis_task(
             
             # 更新进度
             task_service.update_task_status(task_id, TaskStatus.RUNNING, progress=90)
+
+        elif request_type == "semantic_complete":
+            # 只执行语义补全
+            task_service.update_task_status(task_id, TaskStatus.RUNNING, progress=30)
+
+            # 只调用语义补全工具（使用新格式）
+            semantic_result = await SemanticCompleteTool.as_async_api_cls_with_views(params)
+
+            task_service.update_task_status(task_id, TaskStatus.RUNNING, progress=90)
         
         # 组装结果（单个 view 的格式）
         result = {}
@@ -713,6 +722,7 @@ async def view_semantic_and_business_analysis_api(
     - request_type: 请求类型
         - "regenerate_business_objects": 只识别业务对象
         - "full_understanding": 语义理解和业务对象（默认）
+        - "semantic_complete": 只语义理解
     - message_id: 消息ID，用于写入Kafka（可选）
     - 其他参数：auth, config, query 等
     """
@@ -720,7 +730,7 @@ async def view_semantic_and_business_analysis_api(
     
     # 验证 request_type 参数
     request_type = params.get("request_type", "full_understanding")
-    valid_request_types = ["regenerate_business_objects", "full_understanding"]
+    valid_request_types = ["regenerate_business_objects", "full_understanding", "semantic_complete"]
     if request_type not in valid_request_types:
         return JSONResponse(
             content={
@@ -815,7 +825,7 @@ async def view_semantic_and_business_analysis_sync_api(
     
     # 验证 request_type 参数
     request_type = params.get("request_type", "full_understanding")
-    valid_request_types = ["regenerate_business_objects", "full_understanding"]
+    valid_request_types = ["regenerate_business_objects", "full_understanding", "semantic_complete"]
     if request_type not in valid_request_types:
         return JSONResponse(
             content={
@@ -890,6 +900,10 @@ async def view_semantic_and_business_analysis_sync_api(
             
             # 只调用业务对象识别工具（使用旧格式）
             business_result = await BusinessObjectIdentificationTool.as_async_api_cls_with_views(business_params)
+
+        elif request_type == "semantic_complete":
+            # 只执行语义补全（使用新格式）
+            semantic_result = await SemanticCompleteTool.as_async_api_cls_with_views(params)
         
         # 组装结果（单个 view 的格式）
         result = {}

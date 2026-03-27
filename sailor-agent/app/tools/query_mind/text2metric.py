@@ -17,26 +17,26 @@ from langchain_core.prompts import (
 )
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from data_retrieval.errors import Text2DIPMetricError
-from data_retrieval.logs.logger import logger
+from app.errors import Text2DIPMetricError
+from app.logs.logger import logger
 from app.tools.query_mind.prompts.text2dip_metric_prompt import Text2DIPMetricPrompt
 from app.tools.query_mind.prompts.text2metric_prompt.rewrite_query import RewriteMetricQueryPrompt
-from data_retrieval.parsers.base import BaseJsonParser
+from app.parsers.base import BaseJsonParser
 
-from data_retrieval.sessions import BaseChatHistorySession
+from app.session import BaseChatHistorySession
 from app.session.redis_session import RedisHistorySession
 from app.session.in_memory_session import InMemoryChatSession
-from data_retrieval.tools.base import construct_final_answer, async_construct_final_answer
-from data_retrieval.tools.base import LLMTool, ToolName
-from data_retrieval.tools.base import _TOOL_MESSAGE_KEY
-from data_retrieval.settings import get_settings
-from data_retrieval.tools.base import api_tool_decorator
-from data_retrieval.utils.llm import CustomChatOpenAI
-from data_retrieval.datasource.dip_metric import DIPMetric
-from data_retrieval.tools.base import parse_llm_from_model_factory
-from data_retrieval.utils._common import run_blocking
-from data_retrieval.utils.model_types import ModelType4Prompt
-from data_retrieval.api.agent_retrieval import get_datasource_from_agent_retrieval_async
+from app.tools.base import construct_final_answer, async_construct_final_answer
+from app.tools.base import LLMTool, ToolName
+from app.tools.base import _TOOL_MESSAGE_KEY
+from config import get_settings
+from app.tools.base import api_tool_decorator
+from app.utils.llm import CustomChatOpenAI
+from app.datasource.dip_metric import DIPMetric
+from app.tools.base import parse_llm_from_model_factory
+from app.utils.common import run_blocking
+from app.utils.model_types import ModelType4Prompt
+from app.api.agent_retrieval import get_datasource_from_agent_retrieval_async
 
 def CreateSession(session_type: str):
     """创建会话对象，使用本地的 settings 配置"""
@@ -1490,7 +1490,7 @@ class Text2MetricTool(LLMTool):
 if __name__ == '__main__':
     async def main():
         """测试函数"""
-        from data_retrieval.tools.base import validate_openapi_schema
+        from app.tools.base import validate_openapi_schema
         is_valid, error_msg = validate_openapi_schema(await Text2Metric.get_api_schema())
         logger.info(f"验证结果: {is_valid}, 错误信息: {error_msg}")
 

@@ -8,8 +8,8 @@ import asyncio
 from typing import Optional, Dict, Any
 import httpx
 
-from data_retrieval.logs.logger import logger
-from data_retrieval.errors import SandboxError
+from app.logs.logger import logger
+from app.errors import SandboxError
 
 
 class SandboxAPIClient:

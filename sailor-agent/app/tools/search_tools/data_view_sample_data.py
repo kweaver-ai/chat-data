@@ -17,19 +17,18 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain.pydantic_v1 import validator
 
 from app.api.af_api import Services
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
-from data_retrieval.errors import ToolFatalError
-from app.tools.base import ToolMultipleResult
-from data_retrieval.tools.base import (
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession, CreateSession
+from app.errors import ToolFatalError
+from app.tools.base import (
     ToolName,
     LLMTool,
     construct_final_answer,
     async_construct_final_answer,
     api_tool_decorator,
 )
-from data_retrieval.utils.llm import CustomChatOpenAI
-from data_retrieval.settings import get_settings
+from app.utils.llm import CustomChatOpenAI
+from config import get_settings
 from app.utils.password import get_authorization
 from app.session.redis_session import RedisHistorySession
 
@@ -353,17 +352,6 @@ class DataViewSampleDataTool(LLMTool):
         result = self._query_sample_data_batch(ids=ids, limit=limit, fields=fields)
         return result
 
-    def handle_result(
-        self,
-        result_cache_key: str,
-        log: Dict[str, Any],
-        ans_multiple: ToolMultipleResult,
-    ) -> None:
-        """
-        该工具目前不走缓存，只是占位保持接口一致。
-        """
-        # 预留：未来如需缓存样例数据，可在此实现
-        return
 
     # -------- 作为独立异步 API 的封装 --------
     @classmethod

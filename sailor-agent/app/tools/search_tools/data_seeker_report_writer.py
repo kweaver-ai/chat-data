@@ -18,17 +18,16 @@ from langchain_core.prompts import (
 from langchain_core.messages import SystemMessage
 from langchain.pydantic_v1 import validator
 
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
-from data_retrieval.errors import ToolFatalError
-from data_retrieval.utils.model_types import ModelType4Prompt
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession, CreateSession
+from app.errors import ToolFatalError
+from app.utils.model_types import ModelType4Prompt
 from app.depandencies.af_dataview import AFDataSource
 from app.depandencies.af_indicator import AFIndicator
-from data_retrieval.utils.llm import CustomChatOpenAI
-from data_retrieval.settings import get_settings
+from app.utils.llm import CustomChatOpenAI
+from config import get_settings
 from app.utils.password import get_authorization
-from app.tools.base import ToolMultipleResult
-from data_retrieval.tools.base import (
+from app.tools.base import (
     ToolName,
     LLMTool,
     _TOOL_MESSAGE_KEY,
@@ -292,21 +291,6 @@ class DataSeekerReportWriterTool(LLMTool):
             "result_cache_key": self._result_cache_key
         }
 
-    def handle_result(
-            self,
-            result_cache_key: str,
-            log: Dict[str, Any],
-            ans_multiple: ToolMultipleResult
-    ) -> None:
-        logger.info(f'DataSeekerReportWriterTool handle_result: {result_cache_key}')
-        tool_res = self.session.get_agent_logs(
-            result_cache_key
-        )
-        if tool_res:
-            log["result"] = tool_res
-
-            if tool_res.get("result"):
-                ans_multiple.text = tool_res.get("result", [])
 
     @classmethod
     @api_tool_decorator

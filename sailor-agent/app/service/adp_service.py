@@ -16,6 +16,7 @@ class ADPService(object):
         self.adp_agent_factory_host = settings.ADP_AGENT_FACTORY_HOST
         self.adp_ontology_manager_host = settings.ADP_ONTOLOGY_MANAGER_HOST
         self.adp_ontology_query_host = settings.ADP_ONTOLOGY_QUERY_HOST
+        self.adp_model_api_host = settings.ADP_MODEL_API_HOST
 
         self.agent_key = "01K4PQ0X84MKYV5X1ZB9TW07K9"
 
@@ -27,6 +28,7 @@ class ADPService(object):
         self.agent_list_url = "{}/api/agent-factory/v3/published/agent".format(self.adp_agent_factory_host)
         self.dip_ontology_manager_url_internal = self.adp_ontology_manager_host+"/api/ontology-manager/in/v1/knowledge-networks/{kn_id}/object-types"
         self.ontology_query_by_object_types_external = "/api/ontology-query/v1/knowledge-networks/{kn_id}/object-types/{class_id}"
+        self.agent_embedding_url = "{}/api/private/mf-model-api/v1/small-model/embeddings".format(self.adp_model_api_host)
     def stream_debug(self, query, token):
         headers = {
             "authorization": token
@@ -199,3 +201,28 @@ class ADPService(object):
         except Exception as e:
             logger.error(f"Agent list request failed: {str(e)}")
             return {}
+
+    def get_adp_embedding(self, input_text_list):
+        """
+        调用 ADP 小模型服务获取文本 embedding 向量。
+
+        返回形如 {"data": [...]} 的字典，供上层直接读取 "data" 字段。
+        """
+        try:
+            resp = requests.post(
+                self.agent_embedding_url,
+                json={"model": "embedding", "input": input_text_list},
+                verify=False,
+            )
+        except Exception as e:
+            logger.error(f"请求 ADP embedding 服务异常: {e}")
+            return {"object": "list", "data": []}
+
+        try:
+            resp_json = resp.json()
+        except Exception as e:
+            logger.error(f"解析 ADP embedding 响应为 JSON 失败: {e}")
+            return {"object": "list", "data": []}
+
+        data = resp_json.get("data") or []
+        return {"data": data}

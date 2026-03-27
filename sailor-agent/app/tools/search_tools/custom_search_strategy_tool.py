@@ -16,23 +16,23 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
-from data_retrieval.errors import ToolFatalError
-from data_retrieval.utils.llm import CustomChatOpenAI
-from data_retrieval.settings import get_settings
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession, CreateSession
+from app.errors import ToolFatalError
+from app.utils.llm import CustomChatOpenAI
+from config import get_settings
 from app.utils.password import get_authorization
 from app.session.redis_session import RedisHistorySession
 from app.api.af_api import Services
 
-from data_retrieval.tools.base import (
+from app.tools.base import (
     ToolName,
     LLMTool,
     construct_final_answer,
     async_construct_final_answer,
     api_tool_decorator,
 )
-from data_retrieval.parsers.base import BaseJsonParser
+from app.parsers.base import BaseJsonParser
 
 _SETTINGS = get_settings()
 

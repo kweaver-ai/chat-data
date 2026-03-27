@@ -6,7 +6,7 @@
 
 from typing import Optional, List
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 from datetime import datetime
 
 

@@ -2,7 +2,7 @@
 
 ## 功能描述
 
-知识网络选择工具用于根据用户的问题或表信息，在知识网络列表中找到最匹配的知识网络，以便后续的问数功能使用。
+知识网络选择工具用于根据用户的问题或表信息，在知识网络候选集中找到最匹配的知识网络，以便后续的问数功能使用。可通过 **kn_ids** 限定候选（此时不调用知识网络列表接口）。
 
 **文件位置**：`app/tools/search_tools/kn_select_tool.py`
 
@@ -11,17 +11,16 @@
 1. **表匹配模式**：根据提供的表ID列表，匹配包含这些表的知识网络
 2. **问题匹配模式**：使用大模型分析用户问题，匹配最相关的知识网络
 3. **智能缓存**：使用Redis缓存知识网络信息，提升查询性能
-4. **自动过滤**：自动过滤掉对象类数量为0的知识网络
 
 ## 匹配逻辑
 
 ### 优先级规则
 
 1. **参数验证**：如果 `query` 和 `tables` 都为空，返回错误
-2. **匹配优先级**：
+2. **候选来源**：若 `kn_ids` 非空，不请求知识网络列表接口，仅将这些 ID 作为候选（不读写全量列表缓存；对象类型缓存按 kn_id 不变；**kn_name** 可能为空，因未走列表接口无名称元数据）。否则拉取全量列表（含 Redis 缓存）
+3. **匹配优先级**：
    - 如果提供了 `tables`，优先使用表匹配模式
    - 如果没有表或表匹配失败，使用问题匹配模式
-3. **过滤规则**：自动过滤掉 `object_types_count` 为 0 的知识网络
 
 ### 表匹配逻辑
 
@@ -32,7 +31,7 @@
 
 ### 问题匹配逻辑
 
-1. 提取知识网络的名称、标签（tags）、描述（comment）等信息
+1. 提取知识网络的名称、标签（tags）、描述（comment）、对象等信息
 2. 使用大模型分析用户问题与知识网络的关联度
 3. 返回最匹配的知识网络ID和名称
 
@@ -51,6 +50,7 @@
       "technical_name": "视图的技术名称（必填）"
     }
   ],
+  "kn_ids": ["知识网络ID1", "知识网络ID2"],
   "force_refresh_cache": false
 }
 ```
@@ -61,6 +61,7 @@
 |--------|------|------|--------|------|
 | query | string | 否 | "" | 用户输入的问题，用于问题匹配模式 |
 | tables | array | 否 | [] | 表信息列表，用于表匹配模式 |
+| kn_ids | array of string | 否 | [] | 候选知识网络 ID；非空时不调用知识网络列表接口，仅在这些 ID 上匹配 |
 | force_refresh_cache | boolean | 否 | false | 是否强制刷新缓存 |
 
 ### TableInfo 对象结构
@@ -137,7 +138,7 @@
 
 ### 1. 知识网络列表接口
 
-**服务**：`ontology-manager-svc:13014`
+**服务**：`bkn-backend-svc:13014`
 
 **接口**：`GET /api/ontology-manager/v1/knowledge-networks`
 
@@ -159,7 +160,6 @@
             "comment": "",
             "icon": "icon-dip-suanziguanli",
             "color": "#0e5fc5",
-            "detail": "{\"network_info\":{\"tags\":[],\"comment\":\"\",\"object_types_count\":1,\"relation_types_count\":0,\"action_types_count\":0,\"concept_groups_count\":0,\"id\":\"d5dp89i6746ef0r11g00\",\"name\":\"零售业问数知识网络\"},\"object_types\":[{\"id\":\"t_sales\",\"name\":\"t_sales\",\"tags\":[],\"comment\":\"\"}],\"relation_types\":[],\"action_types\":[],\"concept_groups\":[]}",
             "branch": "main",
             "business_domain": "bd_public",
             "creator": {
@@ -194,7 +194,7 @@
 
 ### 2. 知识网络对象类型接口
 
-**服务**：`ontology-manager-svc:13014`
+**服务**：`bkn-backend-svc:13014`
 
 **接口**：`GET /api/ontology-manager/v1/knowledge-networks/{kn_id}/object-types`
 
@@ -226,6 +226,9 @@
   ]
 }
 ```
+
+
+
 
 ## 使用示例
 

@@ -2,7 +2,7 @@
 # @Author:  Xavier.chen@aishu.cn
 # @Date: 2025-04-23
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 
 from datetime import datetime
 from typing import Any

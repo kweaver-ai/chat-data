@@ -26,8 +26,7 @@ from .custom_search_strategy_tool import CustomSearchStrategyTool
 from .department_duty_query_tool import DepartmentDutyQueryTool
 from .kn_select_tool import KnSelectTool
 from .base import QueryIntentionName
-from app.tools.base import ToolMultipleResult
-from data_retrieval.tools.base import (
+from app.tools.base import (
     ToolName,
     # QueryIntentionName,
     ToolResult,

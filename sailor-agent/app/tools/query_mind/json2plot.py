@@ -8,15 +8,15 @@ from enum import Enum
 import pandas as pd
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from langchain_core.pydantic_v1 import BaseModel, Field, PrivateAttr
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession
 from app.session.redis_session import RedisHistorySession
 from app.session.in_memory_session import InMemoryChatSession
-from data_retrieval.tools.base import ToolName
-from data_retrieval.tools.base import AFTool
-from data_retrieval.tools.base import async_construct_final_answer
-from data_retrieval.errors import Json2PlotError
-from data_retrieval.tools.base import api_tool_decorator
+from app.tools.base import ToolName
+from app.tools.base import AFTool
+from app.tools.base import async_construct_final_answer
+from app.errors import Json2PlotError
+from app.tools.base import api_tool_decorator
 
 from fastapi import FastAPI, HTTPException, Body
 

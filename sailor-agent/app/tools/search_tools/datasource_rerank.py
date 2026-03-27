@@ -14,21 +14,21 @@ from langchain_core.prompts import (
 )
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession, CreateSession
 from app.datasource.af_data_catalog import AFDataCatalog
-from data_retrieval.errors import ToolFatalError
-from data_retrieval.utils.model_types import ModelType4Prompt
-from data_retrieval.parsers.base import BaseJsonParser
+from app.errors import ToolFatalError
+from app.utils.model_types import ModelType4Prompt
+from app.parsers.base import BaseJsonParser
 from app.depandencies.af_dataview import AFDataSource
 from app.depandencies.af_indicator import AFIndicator
-from data_retrieval.utils.llm import CustomChatOpenAI
-from data_retrieval.settings import get_settings
+from app.utils.llm import CustomChatOpenAI
+from config import get_settings
 from app.utils.password import get_authorization
 from app.session.redis_session import RedisHistorySession
 from config import settings
 
-from data_retrieval.tools.base import (
+from app.tools.base import (
     LLMTool,
     _TOOL_MESSAGE_KEY,
     construct_final_answer,

@@ -18,39 +18,39 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import ToolException
 from fastapi import Body
 
-from data_retrieval.api.error import (
+from app.api.error import (
     VirEngineError
 )
-from data_retrieval.errors import Text2SQLException
-from data_retrieval.datasource.db_base import DataSource
-from data_retrieval.datasource.dip_dataview import DataView
-from data_retrieval.api.agent_retrieval import (
+from app.errors import Text2SQLException
+from app.datasource.db_base import DataSource
+from app.datasource.dip_dataview import DataView
+from app.api.agent_retrieval import (
     get_datasource_from_agent_retrieval_async,
     build_kn_data_view_fields
 )
-from data_retrieval.logs.logger import logger
-from data_retrieval.parsers.base import BaseJsonParser
-from data_retrieval.parsers.text2sql_parser import JsonText2SQLRuleBaseParser
+from app.logs.logger import logger
+from app.parsers.base import BaseJsonParser
+from app.parsers.text2sql_parser import JsonText2SQLRuleBaseParser
 from app.tools.query_mind.prompts.text2sql_prompt.text2sql import Text2SQLPrompt
 from app.tools.query_mind.prompts.text2sql_prompt.rewrite_query import RewriteQueryPrompt
 
-from data_retrieval.sessions import BaseChatHistorySession
+from app.session import BaseChatHistorySession
 from app.session.redis_session import RedisHistorySession
 from app.session.in_memory_session import InMemoryChatSession
-from data_retrieval.tools.base import ToolName
-from data_retrieval.tools.base import async_construct_final_answer
-from data_retrieval.utils.func import JsonParse
-from data_retrieval.utils.func import add_quotes_to_fields_with_data_self
-from data_retrieval.tools.base import LLMTool, _TOOL_MESSAGE_KEY
-from data_retrieval.tools.base import api_tool_decorator
-from data_retrieval.utils.llm import CustomChatOpenAI
-from data_retrieval.utils.model_types import ModelType4Prompt
-from data_retrieval.utils.sql_to_graph import build_graph
-from data_retrieval.api import VegaType
-from data_retrieval.tools.base import parse_llm_from_model_factory
-from data_retrieval.utils._common import run_blocking
+from app.tools.base import ToolName
+from app.tools.base import async_construct_final_answer
+from app.utils.func import JsonParse
+from app.utils.func import add_quotes_to_fields_with_data_self
+from app.tools.base import LLMTool, _TOOL_MESSAGE_KEY
+from app.tools.base import api_tool_decorator
+from app.utils.llm import CustomChatOpenAI
+from app.utils.model_types import ModelType4Prompt
+from app.utils.sql_to_graph import build_graph
+from app.api import VegaType
+from app.tools.base import parse_llm_from_model_factory
+from app.utils.common import run_blocking
 
-from data_retrieval.settings import get_settings
+from config import get_settings
 
 def CreateSession(session_type: str):
     """创建会话对象，使用本地的 settings 配置"""

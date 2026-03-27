@@ -19,7 +19,7 @@ frozenlist==1.4.1
 greenlet==3.0.3
 h11==0.14.0
 httpcore==1.0.5
-httpx>=0.27.0
+httpx==0.27.2
 idna==3.7
 isort==5.13.2
 jieba==0.42.1
@@ -87,7 +87,7 @@ jsonref==1.1.0
 vegafusion==1.6.9
 func_timeout==4.3.5
 
-kweaver-data-retrieval==0.2.1
+
 sqlparse==0.5.1
 sql_metadata==2.13.0
 dmPython==2.5.8
@@ -96,3 +96,7 @@ sseclient-py==1.8.0
 circuitbreaker
 kafka-python
 arrow==1.3.0
+rank-bm25==0.2.2
+sqlglot==26.21.0
+sandbox-env==0.1.0
+kweaver-sandbox-runtime==0.1.1

@@ -4,7 +4,7 @@
 from typing import Optional
 from datetime import datetime
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 
 # TODO:
 # 使用 AD SDK
@@ -220,7 +220,7 @@ class Text2SQLPrompt(BasePrompt):
 
 if __name__ == "__main__":
     # import json
-    from data_retrieval.datasource.sqlite_ds import SQLiteDataSource
+    from app.datasource.sqlite_ds import SQLiteDataSource
 
     sqlite = SQLiteDataSource(db_file="./tests/agent_test/fake.db")
 

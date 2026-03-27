@@ -22,7 +22,7 @@ from langchain.tools import BaseTool
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from langchain_core.pydantic_v1 import BaseModel, Field, PrivateAttr
 
-from data_retrieval.logs.logger import logger
+from app.logs.logger import logger
 
 from app.depandencies.af_indicator import AFIndicator
 

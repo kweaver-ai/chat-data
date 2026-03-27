@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 from app.handlers.agent_management_handler import AgentManagementRouter
 from app.handlers.config_handler import ConfigRouter
+from app.handlers.memory_handler import MemoryAPIRouter
 from app.handlers.search_handler import search_api
 from app.handlers.data_understand_handler import DataUnderstandAPIRouter
 from app.routers import API_V1_STR
 from app.routers.agent_temp_router import ToolRouter
 
-from data_retrieval.tools.tool_api_router import BaseToolAPIRouter
+from app.tools.tool_api_router import BaseToolAPIRouter
 from app.tools import _TOOLS_MAPPING
 
 def router_init(app):
@@ -33,6 +34,15 @@ def router_init(app):
         DataUnderstandAPIRouter,
         prefix=API_V1_STR,
         tags=['data_understand'],
+        include_in_schema=True,
+        responses={404: {"description": "Not found"}},
+    )
+
+    # 记忆工具路由
+    app.include_router(
+        MemoryAPIRouter,
+        prefix=API_V1_STR,
+        tags=['memory'],
         include_in_schema=True,
         responses={404: {"description": "Not found"}},
     )

@@ -1,25 +1,22 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Knowledge Network Select Tool API",
-    "description": "知识网络选择工具 API 文档。根据用户的问题或表信息，在知识网络列表中找到最匹配的知识网络，以便后续的问数功能使用。",
+    "title": "Sailor Agent",
+    "description": "AF Sailor Agent认知助手服务",
     "version": "1.0.0"
   },
   "servers": [
     {
-      "url": "http://af-sailor-agent:9595",
-      "description": "生产环境"
+      "url": "http://localhost:8000",
+      "description": "本地开发服务器"
     }
   ],
   "paths": {
-    "/api/af-sailor-agent/v1/assistant/tools/kn_select": {
+    "/api/af-sailor-agent/v1/assistant/tools/todo_list": {
       "post": {
-        "summary": "知识网络选择",
-        "description": "根据用户的问题或表信息，在知识网络列表中找到最匹配的知识网络。支持表匹配和问题匹配两种模式，表匹配优先级高于问题匹配。",
-        "operationId": "knSelect",
-        "tags": ["knowledge-network"],
+        "summary": "todo_list_tool",
+        "description": "任务拆分工具，根据用户问题、场景和拆解策略生成任务列表，并保存到 Redis。",
         "requestBody": {
-          "required": false,
           "content": {
             "application/json": {
               "schema": {
@@ -27,21 +24,7 @@
                 "properties": {
                   "llm": {
                     "type": "object",
-                    "description": "LLM 配置参数（可选）",
-                    "properties": {
-                      "model_name": {
-                        "type": "string",
-                        "description": "模型名称"
-                      },
-                      "openai_api_key": {
-                        "type": "string",
-                        "description": "OpenAI API Key"
-                      },
-                      "openai_api_base": {
-                        "type": "string",
-                        "description": "OpenAI API Base URL"
-                      }
-                    }
+                    "description": "LLM 配置参数（可选）"
                   },
                   "auth": {
                     "type": "object",
@@ -49,28 +32,23 @@
                     "properties": {
                       "auth_url": {
                         "type": "string",
-                        "description": "认证服务URL（可选）",
-                        "example": "http://auth-service:8155"
+                        "description": "认证服务URL（可选）"
                       },
                       "user": {
                         "type": "string",
-                        "description": "用户名（可选）",
-                        "example": "admin"
+                        "description": "用户名（可选）"
                       },
                       "password": {
                         "type": "string",
-                        "description": "密码（可选）",
-                        "format": "password"
+                        "description": "密码（可选）"
                       },
                       "token": {
                         "type": "string",
-                        "description": "认证令牌，如提供则无需用户名和密码（推荐）",
-                        "example": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                        "description": "认证令牌，如提供则无需用户名和密码（推荐）"
                       },
                       "user_id": {
                         "type": "string",
-                        "description": "用户ID（可选）",
-                        "example": "123456"
+                        "description": "用户ID（可选）"
                       }
                     }
                   },
@@ -78,15 +56,13 @@
                     "type": "object",
                     "description": "工具配置参数",
                     "properties": {
-                      "base_url": {
-                        "type": "string",
-                        "description": "AF 服务基础 URL（可选，覆盖默认服务地址）",
-                        "example": "http://10.4.134.26"
-                      },
                       "session_type": {
                         "type": "string",
                         "description": "会话类型",
-                        "enum": ["in_memory", "redis"],
+                        "enum": [
+                          "in_memory",
+                          "redis"
+                        ],
                         "default": "redis"
                       },
                       "background": {
@@ -97,156 +73,127 @@
                   },
                   "query": {
                     "type": "string",
-                    "description": "用户输入的问题（可选，如果提供了tables则优先使用表匹配）",
-                    "example": "查询上市公司财务数据"
+                    "description": "由意图理解工具丰富后的用户问题（必填）"
                   },
-                  "tables": {
+                  "scene": {
+                    "type": "string",
+                    "description": "由意图理解工具得出的用户问题场景（可选）"
+                  },
+                  "strategy": {
+                    "type": "string",
+                    "description": "当前场景下的拆解策略说明（可选）"
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "description": "会话ID，用于区分并缓存任务列表（必填）"
+                  },
+                  "tools": {
                     "type": "array",
-                    "description": "表信息列表（可选），用于表匹配模式",
+                    "description": "可用工具列表，用于指导任务拆分",
                     "items": {
                       "type": "object",
-                      "required": ["id", "uuid", "business_name", "technical_name"],
                       "properties": {
-                        "id": {
+                        "name": {
                           "type": "string",
-                          "description": "视图的ID，用于匹配知识网络对象类型中的 data_source.id",
-                          "example": "2008493788360966146"
+                          "description": "工具名称（必填，需与系统已注册工具一致）"
                         },
-                        "uuid": {
+                        "purpose": {
                           "type": "string",
-                          "description": "视图的UUID",
-                          "example": "c445f4d5-71e5-4617-8ccc-79ecd34b8bed"
+                          "description": "工具作用/适用场景（必填，用于指导大模型拆分任务）"
                         },
-                        "business_name": {
+                        "inputs": {
                           "type": "string",
-                          "description": "视图的业务名称",
-                          "example": "A股上市公司现金流量表"
+                          "description": "该工具需要的关键输入参数说明（可选，用字符串描述即可）"
                         },
-                        "technical_name": {
+                        "outputs": {
                           "type": "string",
-                          "description": "视图的技术名称",
-                          "example": "cash_flow_table"
+                          "description": "该工具主要输出参数说明（可选，用字符串描述即可）"
+                        },
+                        "examples": {
+                          "type": "array",
+                          "description": "工具使用示例（可选，用于指导大模型写出更可执行的任务描述）",
+                          "items": {
+                            "type": "string"
+                          }
                         }
-                      }
+                      },
+                      "required": [
+                        "name",
+                        "purpose"
+                      ]
                     }
-                  },
-                  "force_refresh_cache": {
-                    "type": "boolean",
-                    "description": "是否强制刷新缓存（可选，默认为false）",
-                    "default": false
-                  }
-                }
-              },
-              "examples": {
-                "table_match": {
-                  "summary": "表匹配模式示例",
-                  "value": {
-                    "auth": {
-                      "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    },
-                    "tables": [
-                      {
-                        "id": "2008493788360966146",
-                        "uuid": "c445f4d5-71e5-4617-8ccc-79ecd34b8bed",
-                        "business_name": "A股上市公司现金流量表",
-                        "technical_name": "cash_flow_table"
-                      }
-                    ]
                   }
                 },
-                "query_match": {
-                  "summary": "问题匹配模式示例",
-                  "value": {
-                    "auth": {
-                      "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    },
-                    "query": "查询上市公司财务数据"
-                  }
-                },
-                "with_cache_refresh": {
-                  "summary": "强制刷新缓存示例",
-                  "value": {
-                    "auth": {
-                      "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    },
-                    "query": "查询上市公司财务数据",
-                    "force_refresh_cache": true
-                  }
-                }
+                "required": [
+                  "query",
+                  "session_id"
+                ]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "Successful operation",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "kn_id": {
-                      "type": "string",
-                      "description": "匹配到的知识网络ID，如果未匹配则为空字符串",
-                      "example": "d5efgga6746ef0r11g1g"
+                    "result": {
+                      "type": "string"
                     },
-                    "kn_name": {
-                      "type": "string",
-                      "description": "匹配到的知识网络名称，如果未匹配则为空字符串",
-                      "example": "上市公司营收知识网络"
-                    }
-                  },
-                  "required": ["kn_id", "kn_name"]
-                },
-                "examples": {
-                  "success": {
-                    "summary": "匹配成功",
-                    "value": {
-                      "kn_id": "d5efgga6746ef0r11g1g",
-                      "kn_name": "上市公司营收知识网络"
-                    }
-                  },
-                  "no_match": {
-                    "summary": "未匹配到知识网络",
-                    "value": {
-                      "kn_id": "",
-                      "kn_name": ""
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "请求参数错误",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "错误信息"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "服务器内部错误",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "description": "错误信息"
+                    "session_id": {
+                      "type": "string"
                     },
-                    "detail": {
-                      "type": "string",
-                      "description": "错误详情"
+                    "status": {
+                      "type": "string"
+                    },
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "tools": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "inputs": {
+                                  "type": "string"
+                                },
+                                "outputs": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "name"
+                              ]
+                            }
+                          },
+                          "blockedBy": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -256,51 +203,5 @@
         }
       }
     }
-  },
-  "components": {
-    "schemas": {
-      "TableInfo": {
-        "type": "object",
-        "required": ["id", "uuid", "business_name", "technical_name"],
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "视图的ID，用于匹配知识网络对象类型中的 data_source.id"
-          },
-          "uuid": {
-            "type": "string",
-            "description": "视图的UUID"
-          },
-          "business_name": {
-            "type": "string",
-            "description": "视图的业务名称"
-          },
-          "technical_name": {
-            "type": "string",
-            "description": "视图的技术名称"
-          }
-        }
-      },
-      "KnowledgeNetworkResponse": {
-        "type": "object",
-        "required": ["kn_id", "kn_name"],
-        "properties": {
-          "kn_id": {
-            "type": "string",
-            "description": "匹配到的知识网络ID，如果未匹配则为空字符串"
-          },
-          "kn_name": {
-            "type": "string",
-            "description": "匹配到的知识网络名称，如果未匹配则为空字符串"
-          }
-        }
-      }
-    }
-  },
-  "tags": [
-    {
-      "name": "knowledge-network",
-      "description": "知识网络相关操作"
-    }
-  ]
+  }
 }

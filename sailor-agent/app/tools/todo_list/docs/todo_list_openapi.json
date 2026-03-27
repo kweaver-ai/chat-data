@@ -1,0 +1,154 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "todo_list_tool",
+    "description": "任务拆分工具，根据用户问题、场景和拆解策略生成任务列表，并保存到 Redis。",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/todo_list_tool": {
+      "post": {
+        "summary": "todo_list_tool",
+        "description": "任务拆分工具，根据用户问题、场景和拆解策略生成任务列表，并保存到 Redis。",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "llm": {
+                    "type": "object",
+                    "description": "LLM 配置参数（可选）"
+                  },
+                  "auth": {
+                    "type": "object",
+                    "description": "认证参数",
+                    "properties": {
+                      "auth_url": {
+                        "type": "string",
+                        "description": "认证服务URL（可选）"
+                      },
+                      "user": {
+                        "type": "string",
+                        "description": "用户名（可选）"
+                      },
+                      "password": {
+                        "type": "string",
+                        "description": "密码（可选）"
+                      },
+                      "token": {
+                        "type": "string",
+                        "description": "认证令牌，如提供则无需用户名和密码（推荐）"
+                      },
+                      "user_id": {
+                        "type": "string",
+                        "description": "用户ID（可选）"
+                      }
+                    }
+                  },
+                  "config": {
+                    "type": "object",
+                    "description": "工具配置参数",
+                    "properties": {
+                      "session_type": {
+                        "type": "string",
+                        "description": "会话类型",
+                        "enum": ["in_memory", "redis"],
+                        "default": "redis"
+                      },
+                      "background": {
+                        "type": "string",
+                        "description": "背景信息（可选）"
+                      }
+                    }
+                  },
+                  "query": {
+                    "type": "string",
+                    "description": "由意图理解工具丰富后的用户问题（必填）"
+                  },
+                  "scene": {
+                    "type": "string",
+                    "description": "由意图理解工具得出的用户问题场景（可选）"
+                  },
+                  "strategy": {
+                    "type": "string",
+                    "description": "当前场景下的拆解策略说明（可选）"
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "description": "会话ID，用于区分并缓存任务列表（必填）"
+                  }
+                },
+                "required": ["query", "session_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "string"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "任务列表整体状态（pending/running/completed）"
+                    },
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "tools": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": { "type": "string" },
+                                "inputs": { "type": "string" },
+                                "outputs": { "type": "string" }
+                              },
+                              "required": ["name"]
+                            }
+                          },
+                          "blockedBy": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          },
+                          "status": {
+                            "type": "string",
+                            "description": "任务状态（pending/running/completed/failed/cancelled）"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

@@ -2,30 +2,30 @@
 import asyncio
 from textwrap import dedent
 from typing import Optional, Type, Any, List, Dict
-from data_retrieval.errors import ToolFatalError
-from data_retrieval.parsers.base import BaseJsonParser
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
+from app.errors import ToolFatalError
+from app.parsers.base import BaseJsonParser
+from app.session import BaseChatHistorySession, CreateSession
 from langchain_core.pydantic_v1 import BaseModel, Field
-from data_retrieval.utils.llm import CustomChatOpenAI
+from app.utils.llm import CustomChatOpenAI
 from app.depandencies.af_dataview import AFDataSource
-from collections import OrderedDict
+from app.api.data_model import DataModelService
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate
 )
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from langchain_core.messages import HumanMessage, SystemMessage
-from data_retrieval.utils.model_types import ModelType4Prompt
+from app.utils.model_types import ModelType4Prompt
 from app.session.redis_session import RedisHistorySession
-from data_retrieval.tools.base import (
+from app.tools.base import api_tool_decorator
+from app.tools.base import (
     LLMTool,
     _TOOL_MESSAGE_KEY,
     construct_final_answer,
-    async_construct_final_answer,
-    api_tool_decorator,
+    async_construct_final_answer
 )
-from data_retrieval.settings import get_settings
-from data_retrieval.logs.logger import logger
+from config import get_settings
+from app.logs.logger import logger
 from .prompts.semantic_complete_prompt import SemanticCompletePrompt
 from config import settings
 
@@ -56,6 +56,8 @@ class SemanticCompleteTool(LLMTool):
     token: str = ""
     user_id: str = ""
     background: str = ""
+    data_model: DataModelService = None
+    knowledge_item_ids: list[str] = [] # 知识条目id
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -474,9 +476,32 @@ class SemanticCompleteTool(LLMTool):
 
     def _config_chain(
         self,
-        input_data: dict = []
+        input_data: dict = [],
+        input_sample: list = []
     ):
         # self.refresh_result_cache_key()
+        # 将知识条目内容放到背景中
+        if self.knowledge_item_ids:
+            knowledge_item_ids = ",".join(self.knowledge_item_ids)
+
+            knowledge_items = self.data_model.get_knowledge_items_by_ids(knowledge_item_ids)
+
+            knowledge_item_data_list = []
+            for knowledge_item in knowledge_items:
+                for knowledge_item_data in knowledge_item["items"]:
+                    knowledge_item_data_list.append("英文单词：{} 翻译为{}".format(knowledge_item_data["key"], knowledge_item_data["value"]))
+            logger.info("knowledge_item num {}".format(len(knowledge_item_data_list)))
+            if knowledge_item_data_list:
+                self.background += "\n单词额外信息\n" + "\n".join(knowledge_item_data_list)
+            logger.info("background {}".format(self.background))
+        # 样例数据
+        if self.with_sample:
+            if len(input_sample):
+                sample_info = []
+                for sample in input_sample:
+                    sample_info.append(f"逻辑视图{sample['table_name']}的样例数据为：{sample['sample']}")
+                if sample_info:
+                    self.background += "\n" + "\n".join(sample_info)
 
         system_prompt = SemanticCompletePrompt(
             input_data=input_data,
@@ -538,6 +563,7 @@ class SemanticCompleteTool(LLMTool):
             run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ):
         data_source_list = []
+        sample_data_list = []
 
         if len(data_view_list) > 0:
 
@@ -552,9 +578,12 @@ class SemanticCompleteTool(LLMTool):
 
                 logger.info("data_view_list,{} token, {}".format(data_view_list, self.token))
                 # logger.info(data_view_source.service.base_url)
-                data_view_metadata = data_view_source.get_meta_sample_data_v3()
+                data_view_metadata = data_view_source.get_meta_sample_data_v3(self.with_sample)
                 # sample_data = data_view_source.get_data_view_sample()
                 raw_data_source_list = data_view_metadata["detail"]
+
+                if self.with_sample:
+                    sample_data_list = data_view_metadata["sample"]
                 
                 # 转换数据格式
                 data_source_list = self._transform_input_data(raw_data_source_list)
@@ -564,6 +593,7 @@ class SemanticCompleteTool(LLMTool):
 
         chain = self._config_chain(
             input_data=data_source_list,
+            input_sample=sample_data_list
         )
         result = []
         try:
@@ -603,6 +633,10 @@ class SemanticCompleteTool(LLMTool):
         llm_out_dict = params.get("llm", {})
         if llm_out_dict.get("name"):
             llm_dict["model_name"] = llm_out_dict.get("name")
+        if llm_out_dict.get("max_tokens"):
+            llm_dict["max_tokens"] = llm_out_dict.get("max_tokens")
+        else:
+            llm_dict["max_tokens"] = 20000
 
         logger.info("llm dict: {}".format(llm_dict))
         llm = CustomChatOpenAI(**llm_dict)
@@ -612,6 +646,19 @@ class SemanticCompleteTool(LLMTool):
         token = auth_dict.get("token", "")
 
         config_dict = params.get("config", {})
+        data_item_ids = config_dict.get('data_item_ids', "")
+        if isinstance(data_item_ids, str):
+            data_item_ids = data_item_ids.split(",")
+            data_item_ids = [item.strip() for item in data_item_ids if item.strip() != ""]
+        logger.info("data_item_ids {}".format(data_item_ids))
+        data_model = DataModelService(
+            headers={
+                "x-user": auth_dict.get('user_id', ''),
+                "x-account-id": auth_dict.get('user_id', ''),
+                "x-account-type": auth_dict.get('account_type', 'user'),
+                "Authorization": auth_dict.get('token', '')
+            }
+        )
         session = RedisHistorySession()
 
         tool = cls(
@@ -625,6 +672,8 @@ class SemanticCompleteTool(LLMTool):
             data_source_num_limit=config_dict.get("data_source_num_limit", -1),
             dimension_num_limit=config_dict.get("dimension_num_limit", -1),
             with_sample=config_dict.get("with_sample", False),
+            knowledge_item_ids=data_item_ids,
+            data_model=data_model,
         )
 
         query = params.get("query", "")
@@ -745,6 +794,10 @@ class SemanticCompleteTool(LLMTool):
                                             "with_sample": {
                                                 "type": "boolean",
                                                 "description": "是否包含样例数据，默认false"
+                                            },
+                                            "data_item_ids": {
+                                                "type": "string",
+                                                "description": "知识条目id列表, 逗号隔开"
                                             }
                                         }
                                     },

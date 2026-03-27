@@ -6,6 +6,8 @@ ADP API 服务封装
 """
 
 from typing import Optional, List, Dict, Any
+from urllib.parse import quote
+
 from app.api.base import API, HTTPMethod
 from app.api.error import AfDataSourceError, DataViewError
 from config import get_settings
@@ -28,6 +30,9 @@ class ADPServices(object):
     def _gen_api_url(self):
         """生成API URL"""
         self.knowledge_networks_url = self.ontology_manager_url + "/api/ontology-manager/v1/knowledge-networks"
+        self.knowledge_network_detail_url = (
+            self.ontology_manager_url + "/api/ontology-manager/v1/knowledge-networks/{kn_id}"
+        )
         self.knowledge_network_object_types_url = self.ontology_manager_url + "/api/ontology-manager/v1/knowledge-networks/{kn_id}/object-types"
     
     def get_knowledge_networks(
@@ -80,6 +85,45 @@ class ADPServices(object):
         except AfDataSourceError as e:
             raise DataViewError(e) from e
     
+    def get_knowledge_network(
+        self,
+        kn_id: str,
+        headers: dict,
+        include_detail: bool = False,
+        include_statistics: bool = True,
+    ) -> dict:
+        """
+        获取单个知识网络信息（可选统计、详情）
+        
+        Args:
+            kn_id: 知识网络 ID
+            headers: 请求头
+            include_detail: 是否包含 detail
+            include_statistics: 是否包含 statistics（含 object_types_total 等）
+        
+        Returns:
+            知识网络对象
+        """
+        kn_seg = quote(str(kn_id), safe="")
+        url = self.knowledge_network_detail_url.format(kn_id=kn_seg)
+        params = {
+            "include_detail": "true" if include_detail else "false",
+            "include_statistics": "true" if include_statistics else "false",
+        }
+        request_headers = headers.copy() if headers else {}
+        request_headers["x-business-domain"] = settings.ADP_BUSINESS_DOMAIN_ID
+        api = API(
+            method=HTTPMethod.GET,
+            url=url,
+            headers=request_headers,
+            params=params,
+        )
+        try:
+            res = api.call()
+            return res if isinstance(res, dict) else {}
+        except AfDataSourceError as e:
+            raise DataViewError(e) from e
+    
     def get_knowledge_network_object_types(
         self,
         kn_id: str,
@@ -99,7 +143,8 @@ class ADPServices(object):
         Returns:
             对象类型列表，包含entries和total_count
         """
-        url = self.knowledge_network_object_types_url.format(kn_id=kn_id)
+        kn_seg = quote(str(kn_id), safe="")
+        url = self.knowledge_network_object_types_url.format(kn_id=kn_seg)
         params = {
             "offset": offset,
             "limit": limit

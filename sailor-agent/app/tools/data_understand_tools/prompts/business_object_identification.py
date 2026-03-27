@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 from datetime import datetime
 
 prompt_template_cn = """
@@ -103,9 +103,9 @@ prompt_template_cn = """
 **重要说明**：在 `object_attributes` 中，所有字段信息必须包含 `field_id` 和 `field_name`，`field_id` 必须对应输入数据中的 `field_id`，`field_name` 必须对应输入数据中的 `field_tech_name`。
 
 **关于 attributes 字段**：`attributes` 字段用于列出业务对象的所有业务属性及其对应的视图字段。每个属性应该包含：
-- `attr_name`：业务属性的名称（业务层面的名称，如"用户姓名"、"订单金额"等，通常使用字段的业务名称）
+- `attr_name`：**业务属性的名称，必须是中文名称**（如"用户ID"、"用户姓名"、"订单金额"等）。**重要：必须使用中文名，不能使用英文技术名称（如user_id、user_name等）**。如果字段有业务名称（field_business_name），优先使用业务名称；如果没有，则根据字段描述和技术名称生成合适的中文业务名称。
 - `field_id`：对应的视图字段ID（必须对应输入数据中的field_id）
-- `field_name`：对应的视图字段名（必须对应输入数据中的field_name）
+- `field_name`：对应的视图字段名（必须对应输入数据中的field_name，使用技术名称）
 - `attr_type`：属性类型（可选，如：标识符/名称/状态/金额/时间等）
 - `attr_description`：属性描述（可选，属性的业务含义说明）
 
@@ -129,9 +129,9 @@ prompt_template_cn = """
             "object_attributes": {
                 "attributes": [
                     {
-                        "attr_name": "业务属性名称（如：用户ID、用户姓名、订单金额等）",
+                        "attr_name": "业务属性名称（必须是中文名，如：用户ID、用户姓名、订单金额等，不能使用英文技术名称）",
                         "field_id": "对应的视图字段ID（必须对应输入数据中的field_id）",
-                        "field_name": "对应的视图字段名（必须对应输入数据中的field_name）",
+                        "field_name": "对应的视图字段名（必须对应输入数据中的field_name，使用技术名称）",
                         "attr_type": "属性类型（可选，如：标识符/名称/状态/金额/时间等）",
                         "attr_description": "属性描述（可选，属性的业务含义说明）"
                     }

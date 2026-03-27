@@ -8,17 +8,16 @@ from langchain.pydantic_v1 import BaseModel, Field
 from langchain.tools import BaseTool
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 
-from data_retrieval.api.base import API, HTTPMethod
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession
+from app.api.base import API, HTTPMethod
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession
 from app.utils.password import get_authorization
-from data_retrieval.errors import ToolFatalError
+from app.errors import ToolFatalError
 from app.session.redis_session import RedisHistorySession
 from app.session.in_memory_session import InMemoryChatSession
-from app.tools.base import ToolMultipleResult
 from config import settings
 
-from data_retrieval.tools.base import (
+from app.tools.base import (
     ToolName,
     ToolResult,
     AFTool,
@@ -294,37 +293,7 @@ class AfSailorTool(AFTool):
             ).to_json()
         return result
     
-    def handle_result(
-            self,
-            result_cache_key: str,
-            log: Dict[str, Any],
-            ans_multiple: ToolMultipleResult
-    ) -> None:
-        logger.info(f"handle_result 调用 - 对象ID: {id(self)}, 当前缓存键: {self._result_cache_key}")
-        if self.session:
-            tool_res = self.session.get_agent_logs(
-                result_cache_key
-            )
-            if tool_res:
-                log["result"] = tool_res
 
-                cites_cache = []
-                for cite in tool_res.get("cites", []):
-                    cc = {
-                        "id": cite.get("id", ""),
-                        "type": cite.get("type", ""),
-                        "title": cite.get("title", ""),
-                    }
-                    cites_cache.append(cc)
-
-                ans_multiple.sailor_search_result = cites_cache
-                ans_multiple.text = tool_res.get("text", [])
-
-                ans_multiple.cache_keys[result_cache_key] = {
-                    "tool_name": self.name,
-                    "result_cache_key": result_cache_key,
-                    "datasource_num": len(tool_res.get("cites", []))
-                }
 
     @classmethod
     @api_tool_decorator

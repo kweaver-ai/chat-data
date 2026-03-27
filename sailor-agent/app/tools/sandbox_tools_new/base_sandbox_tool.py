@@ -9,14 +9,14 @@ from typing import Optional
 from langchain_core.pydantic_v1 import PrivateAttr, BaseModel, Field
 from fastapi import Body
 
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession
 from app.session.redis_session import RedisHistorySession
 from app.session.in_memory_session import InMemoryChatSession
-from data_retrieval.tools.base import AFTool, api_tool_decorator
-from data_retrieval.settings import get_settings
-from data_retrieval.errors import SandboxError
-from data_retrieval.utils._common import is_valid_url
+from app.tools.base import AFTool, api_tool_decorator
+from config import get_settings
+from app.errors import SandboxError
+from app.utils.common import is_valid_url
 from app.tools.sandbox_tools_new.client import SandboxAPIClient
 
 

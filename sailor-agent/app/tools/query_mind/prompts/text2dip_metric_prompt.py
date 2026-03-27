@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, Any
 import json
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 
 # DIP 指标查询参数模板
 dip_metric_prompt_template = """# ROLE

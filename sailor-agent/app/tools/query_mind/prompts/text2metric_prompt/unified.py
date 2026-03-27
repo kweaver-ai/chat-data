@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, Any
 import json
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 
 # 指标过滤条件
 # | Operator | Symbol | Value Format |

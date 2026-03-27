@@ -1,33 +1,34 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import re
 from textwrap import dedent
 from typing import Optional, Type, Any, List, Dict
-from data_retrieval.errors import ToolFatalError
-from data_retrieval.parsers.base import BaseJsonParser
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
+from app.errors import ToolFatalError
+from app.parsers.base import BaseJsonParser
+from app.session import BaseChatHistorySession, CreateSession
 from langchain_core.pydantic_v1 import BaseModel, Field
-from data_retrieval.utils.llm import CustomChatOpenAI
+from app.utils.llm import CustomChatOpenAI
 from app.depandencies.af_dataview import AFDataSource
-from collections import OrderedDict
 from langchain_core.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate
 )
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from langchain_core.messages import HumanMessage, SystemMessage
-from data_retrieval.utils.model_types import ModelType4Prompt
+from app.utils.model_types import ModelType4Prompt
 from app.session.redis_session import RedisHistorySession
-from app.tools.base import ToolMultipleResult
-from data_retrieval.tools.base import (
+from app.api.data_model import DataModelService
+from app.tools.base import api_tool_decorator
+from app.tools.base import (
     LLMTool,
     _TOOL_MESSAGE_KEY,
     construct_final_answer,
-    async_construct_final_answer,
-    api_tool_decorator,
+    async_construct_final_answer
 )
-from data_retrieval.settings import get_settings
-from data_retrieval.logs.logger import logger
+from config import get_settings
+from app.logs.logger import logger
 from .prompts.business_object_identification import BusinessObjectIdentificationPrompt
+
 from config import settings
 
 
@@ -78,6 +79,8 @@ class BusinessObjectIdentificationTool(LLMTool):
     token: str = ""
     user_id: str = ""
     background: str = ""
+    data_model: DataModelService = None
+    knowledge_item_ids: list[str] = []  # 知识条目id
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -171,9 +174,30 @@ class BusinessObjectIdentificationTool(LLMTool):
 
     def _config_chain(
         self,
-        input_data: dict = []
+        input_data: dict = [],
+        input_sample: list = []
     ):
-        self.refresh_result_cache_key()
+        # self.refresh_result_cache_key()
+        if self.knowledge_item_ids:
+            knowledge_item_ids = ",".join(self.knowledge_item_ids)
+
+            knowledge_items = self.data_model.get_knowledge_items_by_ids(knowledge_item_ids)
+
+            knowledge_item_data_list = []
+            for knowledge_item in knowledge_items:
+                for knowledge_item_data in knowledge_item["items"]:
+                    knowledge_item_data_list.append(knowledge_item_data["value"])
+
+            if knowledge_item_data_list:
+                self.background += "\n" + "\n".join(knowledge_item_data_list)
+        # 样例数据
+        if self.with_sample:
+            if len(input_sample):
+                sample_info = []
+                for sample in input_sample:
+                    sample_info.append(f"逻辑视图{sample['table_name']}的样例数据为：{sample['sample']}")
+                if sample_info:
+                    self.background += "\n" + "\n".join(sample_info)
 
         system_prompt = BusinessObjectIdentificationPrompt(
             input_data=input_data,
@@ -233,6 +257,7 @@ class BusinessObjectIdentificationTool(LLMTool):
     ):
         data_view_metadata = {}
         data_source_list = []
+        sample_data_list = []
 
         if len(data_view_list) == 0:
             error_result = {
@@ -261,8 +286,11 @@ class BusinessObjectIdentificationTool(LLMTool):
                 redis_client=self.session.client,
             )
 
-            data_view_metadata = data_view_source.get_meta_sample_data_v3()
+            data_view_metadata = data_view_source.get_meta_sample_data_v3(self.with_sample)
             data_source_list = data_view_metadata.get("detail", [])
+
+            if self.with_sample:
+                sample_data_list = data_view_metadata["sample"]
 
             if not data_source_list:
                 error_result = {
@@ -289,6 +317,7 @@ class BusinessObjectIdentificationTool(LLMTool):
 
         chain = self._config_chain(
             input_data=data_source_list,
+            input_sample=sample_data_list,
         )
         
         result = {}
@@ -298,6 +327,11 @@ class BusinessObjectIdentificationTool(LLMTool):
             # 补充未关联到业务对象属性的字段（从输入中提取，不在attributes中的字段）
             # 需要将data_source_list转换为新格式
             transformed_views = self._transform_input_data_to_new_format(data_source_list)
+            
+            # 确保所有属性名称都是中文名
+            result = self._ensure_chinese_attr_name(result, transformed_views)
+            
+            # 补充未关联字段
             result = self._add_non_attribute_fields(result, transformed_views)
 
         except Exception as e:
@@ -312,21 +346,6 @@ class BusinessObjectIdentificationTool(LLMTool):
             "summary_text": summary_text,
             "result_cache_key": self._result_cache_key
         }
-
-    def handle_result(
-        self,
-        result_cache_key: str,
-        log: Dict[str, Any],
-        ans_multiple: ToolMultipleResult
-    ) -> None:
-        tool_res = self.session.get_agent_logs(
-            result_cache_key
-        )
-        if tool_res:
-            log["result"] = tool_res
-
-            if tool_res.get("cites"):
-                ans_multiple.cites = tool_res.get("cites", [])
 
     @classmethod
     @api_tool_decorator
@@ -345,6 +364,10 @@ class BusinessObjectIdentificationTool(LLMTool):
         llm_out_dict = params.get("llm", {})
         if llm_out_dict.get("name"):
             llm_dict["model_name"] = llm_out_dict.get("name")
+        if llm_out_dict.get("max_tokens"):
+            llm_dict["max_tokens"] = llm_out_dict.get("max_tokens")
+        else:
+            llm_dict["max_tokens"] = 20000
         llm = CustomChatOpenAI(**llm_dict)
 
         auth_dict = params.get("auth", {})
@@ -504,6 +527,90 @@ class BusinessObjectIdentificationTool(LLMTool):
         return new_format_list
 
     @staticmethod
+    def _contains_chinese(text: str) -> bool:
+        """检查字符串是否包含中文字符"""
+        if not text:
+            return False
+        return bool(re.search(r'[\u4e00-\u9fff]', text))
+    
+    @staticmethod
+    def _ensure_chinese_attr_name(result: Dict[str, Any], input_views: List[Dict]) -> Dict[str, Any]:
+        """
+        确保所有属性名称（attr_name）都是中文名
+        
+        Args:
+            result: LLM返回的结果
+            input_views: 输入的视图数据列表，用于获取字段的业务名称
+            
+        Returns:
+            修正后的结果
+        """
+        if not result or not isinstance(result, dict):
+            return result
+        
+        # 创建字段映射（按view_id和field_id）
+        field_map = {}
+        for input_view in input_views:
+            view_id = (input_view.get("view_id") or 
+                      input_view.get("table_id") or "")
+            if not view_id:
+                continue
+            
+            fields = (input_view.get("fields") or 
+                     input_view.get("view_fields") or [])
+            
+            for field in fields:
+                field_id = (field.get("field_id") or 
+                           field.get("view_field_id") or "")
+                if field_id:
+                    field_business_name = (field.get("field_business_name") or 
+                                         field.get("view_field_business_name") or "")
+                    field_tech_name = (field.get("field_tech_name") or 
+                                      field.get("field_technical_name") or 
+                                      field.get("view_field_technical_name") or 
+                                      field.get("field_name") or "")
+                    
+                    key = f"{view_id}:{field_id}"
+                    field_map[key] = {
+                        "field_business_name": field_business_name,
+                        "field_tech_name": field_tech_name,
+                    }
+        
+        # 兼容新格式（views）和旧格式（tables）
+        views_or_tables = result.get("views") or result.get("tables", [])
+        
+        # 修正每个视图的属性名称
+        for view_or_table in views_or_tables:
+            view_id = (view_or_table.get("view_id") or 
+                      view_or_table.get("table_id") or "")
+            if not view_id:
+                continue
+            
+            object_attributes = view_or_table.get("object_attributes", {})
+            attributes = object_attributes.get("attributes", [])
+            
+            # 修正attributes中的attr_name
+            for attr in attributes:
+                attr_name = attr.get("attr_name", "")
+                field_id = attr.get("field_id", "")
+                
+                # 如果属性名称不是中文，则使用字段的业务名称
+                if attr_name and not BusinessObjectIdentificationTool._contains_chinese(attr_name):
+                    key = f"{view_id}:{field_id}"
+                    field_info = field_map.get(key, {})
+                    field_business_name = field_info.get("field_business_name", "")
+                    
+                    if field_business_name:
+                        # 使用字段的业务名称
+                        attr["attr_name"] = field_business_name
+                        logger.info(f"属性名称 '{attr_name}' 不是中文，已替换为业务名称 '{field_business_name}'")
+                    else:
+                        # 如果没有业务名称，记录警告
+                        logger.warning(f"属性名称 '{attr_name}' 不是中文，且字段 {field_id} 没有业务名称")
+        
+        return result
+    
+    @staticmethod
     def _add_non_attribute_fields(result: Dict[str, Any], input_views: List[Dict]) -> Dict[str, Any]:
         """
         在结果中添加未关联到业务对象属性的字段（从输入中提取，不在attributes中的字段）
@@ -617,6 +724,7 @@ class BusinessObjectIdentificationTool(LLMTool):
             "model_name": settings.TOOL_LLM_MODEL_NAME,
             "openai_api_key": settings.TOOL_LLM_OPENAI_API_KEY,
             "openai_api_base": settings.TOOL_LLM_OPENAI_API_BASE,
+            "max_tokens": 20000
         }
         llm_dict.update(params.get("llm", {}))
         llm = CustomChatOpenAI(**llm_dict)
@@ -650,6 +758,9 @@ class BusinessObjectIdentificationTool(LLMTool):
         # 使用转换后的数据配置 chain
         chain = tool._config_chain(input_data=views)
         result = await chain.ainvoke({"input": query})
+        
+        # 确保所有属性名称都是中文名
+        result = tool._ensure_chinese_attr_name(result, views)
         
         # 补充未关联到业务对象属性的字段（从输入中提取，不在attributes中的字段）
         result = tool._add_non_attribute_fields(result, views)
@@ -710,6 +821,10 @@ class BusinessObjectIdentificationTool(LLMTool):
                                             "with_sample": {
                                                 "type": "boolean",
                                                 "description": "是否包含样例数据，默认false"
+                                            },
+                                            "data_item_ids": {
+                                                "type": "string",
+                                                "description": "知识条目id列表, 逗号隔开"
                                             }
                                         }
                                     },

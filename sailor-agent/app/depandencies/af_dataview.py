@@ -521,8 +521,9 @@ class AFDataSource(DataSource):
 
         return result
 
-    def get_meta_sample_data_v3(self):
+    def get_meta_sample_data_v3(self, with_sample=False):
         details = []
+        sample_datas = []
         column_infos = dict()
         view_infos = dict()
         view_schema_infos = dict()
@@ -551,10 +552,19 @@ class AFDataSource(DataSource):
                                "field_type": column['data_type'],
                                "field_description": column['comment']})
             view_info["fields"] = fields
+
+            if with_sample:
+                sample_data = self.service.get_data_view_sample_data(view_id, headers=self.headers)
+                columns = sample_data["columns"]
+                data = sample_data["data"][:2]
+
+                sample_rec_data = [{column["name"]:[da[i] for da in data ]}  for i, column in enumerate(columns)]
+                sample_datas.append({"table_name":  view_info['table_name'], "sample": sample_rec_data})
             details.append(view_info)
 
         result = {
             "detail": details,
+            "sample": sample_datas
         }
 
         return result

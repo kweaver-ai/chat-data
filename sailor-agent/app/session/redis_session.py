@@ -13,18 +13,18 @@ from langchain_core.messages import AIMessage
 from typing import Union, Awaitable
 
 # from af_agent.settings import get_settings
-from data_retrieval.settings import get_settings as get_settings2
+# from data_retrieval.settings import get_settings as get_settings2
 from app.logs.logger import logger
 from config import get_settings
 # from af_agent.logs.logger import logger
 
 settings = get_settings()
 empty = ""
-from data_retrieval.sessions.base import BaseChatHistorySession
+from app.session.base import BaseChatHistorySession
 
 
 
-retrieval_settings = get_settings2()
+retrieval_settings = get_settings()
 
 
 class RedisHistorySession(BaseChatHistorySession):

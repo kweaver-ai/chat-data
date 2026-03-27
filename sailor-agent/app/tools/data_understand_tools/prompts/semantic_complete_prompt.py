@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 from datetime import datetime
 
 prompt_template_cn = """
@@ -289,6 +289,12 @@ prompt_template_cn = """
 ## 用户输入
 ```json
 {{input_data}}
+```
+
+## 背景信息（可选）
+如果以下内容不为空，请将其作为补充上下文用于判断与补全；如果为空请忽略。
+```text
+{{background}}
 ```
 
 输出检测结果（仅JSON，无其他文字）。

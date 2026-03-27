@@ -8,7 +8,7 @@ from app.api.af_api import Services
 from app.api.error import AfDataSourceError, VirEngineError, FrontendColumnError, FrontendSampleError
 from app.datasource.db_base import DataSource
 from app.logs.logger import logger
-from data_retrieval.datasource.dimension_reduce import DimensionReduce
+from app.datasource.dimension_reduce import DimensionReduce
 from app.session.redis_session import RedisConnect
 
 

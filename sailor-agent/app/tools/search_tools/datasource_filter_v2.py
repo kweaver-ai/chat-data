@@ -30,20 +30,19 @@ from langchain_core.prompts import (
 )
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from pandas import Timestamp
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
-from data_retrieval.tools.base import ToolName
-from app.tools.base import ToolMultipleResult
-from data_retrieval.tools.base import _TOOL_MESSAGE_KEY
-from data_retrieval.tools.base import construct_final_answer, async_construct_final_answer
-from data_retrieval.errors import Json2PlotError, ToolFatalError
-from data_retrieval.tools.base import api_tool_decorator
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession, CreateSession
+from app.tools.base import ToolName
+# from app.tools.base import ToolMultipleResult
+from app.tools.base import _TOOL_MESSAGE_KEY
+from app.tools.base import construct_final_answer, async_construct_final_answer
+from app.errors import Json2PlotError, ToolFatalError
+from app.tools.base import api_tool_decorator
 
 
 from app.tools.search_tools.prompts.datasource_filter_prompt import DataSourceFilterPrompt
-from data_retrieval.utils.model_types import ModelType4Prompt
-from data_retrieval.parsers.base import BaseJsonParser
+from app.utils.model_types import ModelType4Prompt
+from app.parsers.base import BaseJsonParser
 
 from app.utils.llm_utils import estimate_tokens_safe
 
@@ -67,7 +66,7 @@ class ArgsModel(BaseModel):
 
 
 class DataSourceFilterToolV2(DataSourceFilterTool):
-    name: str = ToolName.from_datasource_filter.value
+    name: str = "datasource_filter"
     description: str = dedent(
         f"""数据资源过滤工具，如果用户针对上一论问答的结果做进一步追问的时候，可以使用该工具。一定要注意如果本轮问答使用了 {ToolName.from_sailor.value} 工具, 就不能再使用该工具!
 
@@ -246,21 +245,6 @@ class DataSourceFilterToolV2(DataSourceFilterTool):
             "result_cache_key": self._result_cache_key
         }
 
-    def handle_result(
-            self,
-            result_cache_key: str,
-            log: Dict[str, Any],
-            ans_multiple: ToolMultipleResult
-    ) -> None:
-        tool_res = self.session.get_agent_logs(
-            result_cache_key
-        )
-        if tool_res:
-            log["result"] = tool_res
-
-            # 替换 cites
-            if tool_res.get("cites"):
-                ans_multiple.cites = tool_res.get("cites", [])
 
     @classmethod
     @api_tool_decorator
@@ -269,7 +253,7 @@ class DataSourceFilterToolV2(DataSourceFilterTool):
             params: dict
     ):
         """将工具转换为异步 API 类方法"""
-        from data_retrieval.utils.llm import CustomChatOpenAI
+        from app.utils.llm import CustomChatOpenAI
         from app.utils.password import get_authorization
         from app.session.redis_session import RedisHistorySession
         from config import settings

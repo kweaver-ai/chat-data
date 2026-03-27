@@ -5,7 +5,7 @@ from os import path
 from datetime import datetime
 from typing import Optional, List, Any
 
-from data_retrieval.prompts.base import BasePrompt
+from app.tools.prompts.base import BasePrompt
 
 with open(path.join(path.dirname(__file__), 'params_json.txt'), 'r', encoding='utf-8') as file:
     content = file.read()

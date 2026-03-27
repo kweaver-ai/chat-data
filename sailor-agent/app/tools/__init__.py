@@ -4,10 +4,11 @@ from .search_tools import (AfSailorTool, DataSourceFilterTool, DataSourceFilterT
 from .data_understand_tools import (BusinessObjectIdentificationTool, DataClassificationDetectTool
 , ExploreRuleIdentificationTool, SemanticCompleteTool, SensitiveDataDetectTool)
 
-from .query_mind import Text2SQLTool, Text2MetricTool, Json2PlotTool
-from .sandbox_tools_new import  ExecuteCodeTool, CreateFileTool, ReadFileTool, ListFilesTool, TerminateSessionTool
-
-
+from .query_mind import Text2SQLTool, Text2MetricTool, Json2PlotTool, GetMetadataTool, KnowledgeItemTool, SQLHelperTool
+from .sandbox_tools.toolkit import ExecuteCodeTool, CreateFileTool, ReadFileTool, ListFilesTool
+from .basic_tools import IntentRouterTool
+from .memory_tools import MemorySearchTool, MemoryWriteTool
+from .todo_list import TodoListTool, TaskManagerTool
 
 _TOOLS_MAPPING = {
     "af_sailor": AfSailorTool,
@@ -27,9 +28,16 @@ _TOOLS_MAPPING = {
     "text2sql": Text2SQLTool,
     "text2metric": Text2MetricTool,
     "json2plot": Json2PlotTool,
+    "get_metadata": GetMetadataTool,
+    "knowledge_item": KnowledgeItemTool,
+    "sql_helper": SQLHelperTool,
     "execute_code": ExecuteCodeTool,
     "create_file": CreateFileTool,
     "read_file": ReadFileTool,
     "list_files": ListFilesTool,
-    "terminate_session": TerminateSessionTool,
+    "intent_router": IntentRouterTool,
+    "memory_search": MemorySearchTool,
+    "memory_write": MemoryWriteTool,
+    "todo_list": TodoListTool,
+    "task_manager": TaskManagerTool,
 }

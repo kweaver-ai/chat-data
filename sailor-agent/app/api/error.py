@@ -17,6 +17,10 @@ class DataSourceErrno(Enum):
     INDICATOR_DETAIL_ERROR = 10
     INDICATOR_QUERY_ERROR = 11
     DATA_EXPLORE_ERROR = 12
+    DATA_MODEL_DETAIL_ERROR = 13
+    DATA_MODEL_QUERY_ERROR = 14
+
+    AGENT_RETRIEVAL_ERROR = 15
 
 
 Errors = {
@@ -32,6 +36,9 @@ Errors = {
     DataSourceErrno.INDICATOR_DETAIL_ERROR: "IndicatorDetailError",
     DataSourceErrno.INDICATOR_QUERY_ERROR: "IndicatorQueryError",
     DataSourceErrno.DATA_EXPLORE_ERROR: "DataExploreError",
+    DataSourceErrno.DATA_MODEL_DETAIL_ERROR: "DataModelDetailError",
+    DataSourceErrno.DATA_MODEL_QUERY_ERROR: "DataModelQueryError",
+    DataSourceErrno.AGENT_RETRIEVAL_ERROR: "AgentRetrievalError"
 }
 
 class AfDataSourceError(Exception):
@@ -230,6 +237,37 @@ class DataViewError(AfDataSourceError):
     def __init__(self, e: AfDataSourceError):
         super().__init__(
             code=DataSourceErrno.DATA_EXPLORE_ERROR,
+            status=e.status,
+            reason=e.reason,
+            url=e.url,
+            detail=e.detail
+        )
+
+class AgentRetrievalError(AfDataSourceError):
+    def __init__(self, e: AfDataSourceError):
+        super().__init__(
+            code=DataSourceErrno.AGENT_RETRIEVAL_ERROR,
+            status=e.status,
+            reason=e.reason,
+            url=e.url,
+            detail=e.detail
+        )
+
+class DataModelDetailError(AfDataSourceError):
+    def __init__(self, e: AfDataSourceError):
+        super().__init__(
+            code=DataSourceErrno.DATA_MODEL_DETAIL_ERROR,
+            status=e.status,
+            reason=e.reason,
+            url=e.url,
+            detail=e.detail
+        )
+
+
+class DataModelQueryError(AfDataSourceError):
+    def __init__(self, e: AfDataSourceError):
+        super().__init__(
+            code=DataSourceErrno.DATA_MODEL_QUERY_ERROR,
             status=e.status,
             reason=e.reason,
             url=e.url,

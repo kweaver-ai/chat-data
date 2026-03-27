@@ -14,12 +14,10 @@ from langchain_core.callbacks import (
 )
 from langchain_core.pydantic_v1 import BaseModel, Field
 
-from app.api.af_api import Services
-from data_retrieval.logs.logger import logger
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
-from data_retrieval.errors import ToolFatalError
-from app.tools.base import ToolMultipleResult
-from data_retrieval.tools.base import (
+from app.logs.logger import logger
+from app.session import BaseChatHistorySession, CreateSession
+from app.errors import ToolFatalError
+from app.tools.base import (
     ToolName,
     LLMTool,
     construct_final_answer,
@@ -27,10 +25,10 @@ from data_retrieval.tools.base import (
     api_tool_decorator,
     _TOOL_MESSAGE_KEY,
 )
-from data_retrieval.utils.llm import CustomChatOpenAI
-from data_retrieval.settings import get_settings
-from data_retrieval.utils.model_types import ModelType4Prompt
-from data_retrieval.parsers.base import BaseJsonParser
+from app.utils.llm import CustomChatOpenAI
+from config import get_settings
+from app.utils.model_types import ModelType4Prompt
+from app.parsers.base import BaseJsonParser
 from app.utils.password import get_authorization
 from app.session.redis_session import RedisHistorySession
 from app.service.adp_service import ADPService
@@ -372,30 +370,6 @@ class DepartmentDutyQueryTool(LLMTool):
         """
         result = await self._query_department_duty(query=query)
         return result
-
-    def handle_result(
-        self,
-        result_cache_key: str,
-        log: Dict[str, Any],
-        ans_multiple: ToolMultipleResult,
-    ) -> None:
-        """
-        处理结果，从缓存中读取结果
-        """
-        tool_res = self.session.get_agent_logs(result_cache_key)
-        if tool_res:
-            cached_result = tool_res.get("result", tool_res)
-            # 只返回筛选后的结果，不包含search_results和judge_result
-            if isinstance(cached_result, dict):
-                filtered_result = {
-                    "relevant_duties": cached_result.get("relevant_duties", []),
-                    "summary": cached_result.get("summary", {})
-                }
-                log["result"] = filtered_result
-            else:
-                log["result"] = cached_result
-            if tool_res.get("cites"):
-                ans_multiple.cites = tool_res.get("cites", [])
 
     # -------- 作为独立异步 API 的封装 --------
     @classmethod

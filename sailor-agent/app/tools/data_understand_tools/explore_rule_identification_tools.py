@@ -2,11 +2,11 @@
 import asyncio
 from textwrap import dedent
 from typing import Optional, Type, Any, List, Dict
-from data_retrieval.errors import ToolFatalError
-from data_retrieval.parsers.base import BaseJsonParser
-from data_retrieval.sessions import BaseChatHistorySession, CreateSession
+from app.errors import ToolFatalError
+from app.parsers.base import BaseJsonParser
+from app.session import BaseChatHistorySession, CreateSession
 from langchain_core.pydantic_v1 import BaseModel, Field
-from data_retrieval.utils.llm import CustomChatOpenAI
+from app.utils.llm import CustomChatOpenAI
 from app.depandencies.af_dataview import AFDataSource
 from collections import OrderedDict
 from langchain_core.prompts import (
@@ -15,19 +15,18 @@ from langchain_core.prompts import (
 )
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from langchain_core.messages import HumanMessage, SystemMessage
-from data_retrieval.utils.model_types import ModelType4Prompt
+from app.utils.model_types import ModelType4Prompt
 from app.session.redis_session import RedisHistorySession
-from app.tools.base import ToolMultipleResult
-from data_retrieval.tools.base import (
+from app.tools.base import api_tool_decorator
+from app.tools.base import (
     ToolName,
     LLMTool,
     _TOOL_MESSAGE_KEY,
     construct_final_answer,
     async_construct_final_answer,
-    api_tool_decorator,
 )
-from data_retrieval.settings import get_settings
-from data_retrieval.logs.logger import logger
+from config import get_settings
+from app.logs.logger import logger
 from .prompts.explore_rule_identification import ExploreRuleIdentificationPrompt
 from config import settings
 
@@ -79,9 +78,16 @@ class ExploreRuleIdentificationTool(LLMTool):
 
     def _config_chain(
         self,
-        input_data: dict = []
+        input_data: dict = [],
+        input_sample: list = []
     ):
-        self.refresh_result_cache_key()
+        if self.with_sample:
+            if len(input_sample):
+                sample_info = []
+                for sample in input_sample:
+                    sample_info.append(f"逻辑视图{sample['table_name']}的样例数据为：{sample['sample']}")
+                if sample_info:
+                    self.background += "\n" + "\n".join(sample_info)
 
         system_prompt = ExploreRuleIdentificationPrompt(
             input_data=input_data,
@@ -141,6 +147,7 @@ class ExploreRuleIdentificationTool(LLMTool):
     ):
         data_view_metadata = {}
         data_source_list = []
+        sample_data_list = []
 
         if len(data_view_list) == 0:
             return {
@@ -176,8 +183,10 @@ class ExploreRuleIdentificationTool(LLMTool):
                 redis_client=self.session.client,
             )
 
-            data_view_metadata = data_view_source.get_meta_sample_data_v3()
+            data_view_metadata = data_view_source.get_meta_sample_data_v3(self.with_sample)
             data_source_list = data_view_metadata.get("detail", [])
+            if self.with_sample:
+                sample_data_list = data_view_metadata["sample"]
 
             if not data_source_list:
                 return {
@@ -226,20 +235,6 @@ class ExploreRuleIdentificationTool(LLMTool):
             "result_cache_key": self._result_cache_key
         }
 
-    def handle_result(
-        self,
-        result_cache_key: str,
-        log: Dict[str, Any],
-        ans_multiple: ToolMultipleResult
-    ) -> None:
-        tool_res = self.session.get_agent_logs(
-            result_cache_key
-        )
-        if tool_res:
-            log["result"] = tool_res
-
-            if tool_res.get("cites"):
-                ans_multiple.cites = tool_res.get("cites", [])
 
     @classmethod
     @api_tool_decorator
@@ -256,6 +251,10 @@ class ExploreRuleIdentificationTool(LLMTool):
         llm_out_dict = params.get("llm", {})
         if llm_out_dict.get("name"):
             llm_dict["model_name"] = llm_out_dict.get("name")
+        if llm_out_dict.get("max_tokens"):
+            llm_dict["max_tokens"] = llm_out_dict.get("max_tokens")
+        else:
+            llm_dict["max_tokens"] = 20000
         llm = CustomChatOpenAI(**llm_dict)
 
         auth_dict = params.get("auth", {})

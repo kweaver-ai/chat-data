@@ -1,0 +1,143 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "task_manager_tool",
+    "description": "任务管理工具：基于 TodoList 工具生成的任务列表，提供获取可执行任务、查询被卡住/已完成任务和更新任务状态的能力。",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/task_manager_tool": {
+      "post": {
+        "summary": "task_manager_tool",
+        "description": "任务管理工具：基于 TodoList 工具生成的任务列表，提供获取可执行任务、查询被卡住/已完成任务和更新任务状态的能力。",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "config": {
+                    "type": "object",
+                    "description": "预留的工具配置参数（当前未使用，可选）"
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "description": "会话ID，用于区分并管理任务列表（必填）"
+                  },
+                  "op": {
+                    "type": "string",
+                    "description": "操作类型（必填）：\"get_runnable\" 获取可执行任务；\"update_status\" 更新任务状态",
+                    "enum": ["get_runnable", "update_status"]
+                  },
+                  "task_id": {
+                    "type": "integer",
+                    "description": "当 op 为 update_status 时，必填，要更新的任务ID"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "当 op 为 update_status 时，必填，新状态，如 \"pending\" / \"running\" / \"completed\" / \"failed\" / \"cancelled\""
+                  },
+                  "adjust": {
+                    "type": "boolean",
+                    "description": "是否需要根据当前任务结果调整后续任务（可选）",
+                    "default": false
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "调整原因说明，仅在 adjust 为 True 时有意义（可选）"
+                  }
+                },
+                "required": ["session_id", "op"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "string"
+                    },
+                    "session_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "任务列表整体状态（pending/running/completed）"
+                    },
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "tools": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": { "type": "string" },
+                                "inputs": { "type": "string" },
+                                "outputs": { "type": "string" }
+                              },
+                              "required": ["name"]
+                            }
+                          },
+                          "blockedBy": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          },
+                          "status": {
+                            "type": "string",
+                            "description": "任务状态（pending/running/completed/failed/cancelled）"
+                          }
+                        }
+                      }
+                    },
+                    "runnable_tasks": {
+                      "type": "array",
+                      "description": "当前可直接执行的任务列表",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "blocked_tasks": {
+                      "type": "array",
+                      "description": "被前置任务阻塞的任务列表",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "completed_tasks": {
+                      "type": "array",
+                      "description": "已完成的任务列表",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

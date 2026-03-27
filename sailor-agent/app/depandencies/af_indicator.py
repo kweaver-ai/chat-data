@@ -5,9 +5,9 @@
 from typing import Any, Dict
 
 from datetime import datetime
-from data_retrieval.datasource.api_base import APIDataSource
+from app.datasource.api_base import APIDataSource
 from app.api.af_api import Services
-from data_retrieval.api.error import AfDataSourceError, IndicatorDescError, IndicatorDetailError, IndicatorQueryError
+from app.api.error import AfDataSourceError, IndicatorDescError, IndicatorDetailError, IndicatorQueryError
 from app.logs.logger import logger
 from app.depandencies.af_dataview import get_view_en2type, view_source_reshape, get_table_info
 from app.depandencies.af_dataview import FrontendColumnError
