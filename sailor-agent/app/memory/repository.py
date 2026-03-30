@@ -76,6 +76,13 @@ class MemoryRepository:
         for record in self._session.scalars(stmt):
             self._session.delete(record)
 
+    def delete_chunks_by_document_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
+        stmt = select(MemoryChunkRecord).where(MemoryChunkRecord.document_id.in_(ids))
+        for record in self._session.scalars(stmt):
+            self._session.delete(record)
+
     def list_documents(self, query: MemoryListQueryDTO) -> MemoryListResultDTO:
         """
         分页列出当前用户的记忆文档，支持按关键词和来源类型简单过滤。
