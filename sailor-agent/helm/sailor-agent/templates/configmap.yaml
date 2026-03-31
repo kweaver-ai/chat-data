@@ -9,7 +9,7 @@ data:
   MYSQL_HOST: "{{ .depServices.rds.host}}:{{ .depServices.rds.port}}"
   MYSQL_USERNAME: {{ .depServices.rds.user | quote }}
   MYSQL_PASSWORD: {{ .depServices.rds.password | quote }}
-  MYSQL_DB: {{ .depServices.rds.database | quote }}
+  MYSQL_DB: "af_cognitive_assistant"
   DB_TYPE: {{ .depServices.rds.type | quote }}
   TRACE_ENABLED: {{.service.telemetry.trace.enabled| quote }}
   TRACE_URL: {{.service.telemetry.trace.endpoint | quote }}

@@ -55,7 +55,7 @@ depServices:
     port: 3330
     user: anyshare
     password: xxx
-    database: af_business
+    database: af_cognitive_assistant
   redis:
     connectInfo:
       masterGroupName: mymaster
