@@ -18,7 +18,7 @@
                     ]
                 },
                 "as_hanlp_analyzer": {
-                    "tokenizer": "as_hanlp",
+                    "tokenizer": "standard",
                     "filter": [
                         "lowercase",
                         "asciifolding"
@@ -42,11 +42,6 @@
                         "letter",
                         "digit"
                     ]
-                },
-                "as_hanlp": {
-                    "type": "hanlp_index",
-                    "enable_stop_dictionary": true,
-                    "enable_custom_config": true
                 }
             },
             "filter": {
