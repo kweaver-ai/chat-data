@@ -106,9 +106,9 @@ depServices:
     tool_llm_openai_api_key: "EMPTY"
     tool_llm_openai_api_base: "http://mf-model-api:9898/api/private/mf-model-api/v1/"
   mq:
-    Host: kafka-external-31000.resource
-    Port: 9098
-    Type: "kafka"
+    mqHost: 'kafka.resource.svc.cluster.local'
+    mqPort: 9092
+    mqType: kafka
     auth:
       username: kafkaclient
       password: xxx
