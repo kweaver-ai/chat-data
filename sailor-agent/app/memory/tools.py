@@ -129,3 +129,9 @@ class MemoryTools:
             self._service.upsert_documents(docs)
         return MemoryWriteToolOutput(written_ids=[d.id for d in docs])
 
+    def delete_documents(self, ids: list[str]) -> None:
+        """
+        物理删除记忆文档及其对应的向量块。
+        """
+        self._service.delete_documents(ids)
+
