@@ -2,23 +2,66 @@
   "openapi": "3.0.0",
   "info": {
     "title": "task_manager_tool",
-    "description": "任务管理工具：基于 TodoList 工具生成的任务列表，提供获取可执行任务、查询被卡住/已完成任务和更新任务状态的能力。",
+    "description": "任务管理工具：基于 TodoList 工具生成的任务列表，提供获取可执行任务、查询被卡住/已完成任务与更新任务状态。与 todo_list_tool 共用 Redis 任务列表。",
     "version": "1.0.0"
   },
+  "servers": [
+    {
+      "url": "http://af-sailor-agent:9595",
+      "description": "本地或网关基地址；导入后请改为实际 AF Sailor Agent 服务根 URL（须含协议，如 https://host:port）"
+    }
+  ],
   "paths": {
-    "/task_manager_tool": {
+    "/api/af-sailor-agent/v1/assistant/tools/task_manager": {
       "post": {
         "summary": "task_manager_tool",
-        "description": "任务管理工具：基于 TodoList 工具生成的任务列表，提供获取可执行任务、查询被卡住/已完成任务和更新任务状态的能力。",
+        "description": "任务管理工具：op=get_runnable 查询可执行/阻塞/已完成任务；op=update_status 更新单任务状态（可配合 adjust/reason 取消剩余任务）。与 todo_list_tool 共用 Redis。",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
                 "properties": {
+                  "auth": {
+                    "type": "object",
+                    "description": "认证参数（与 todo_list_tool 一致）",
+                    "properties": {
+                      "auth_url": {
+                        "type": "string",
+                        "description": "认证服务URL（可选，获取 token 时使用）"
+                      },
+                      "user": {
+                        "type": "string",
+                        "description": "用户名（可选）"
+                      },
+                      "password": {
+                        "type": "string",
+                        "description": "密码（可选）"
+                      },
+                      "token": {
+                        "type": "string",
+                        "description": "认证令牌，如提供则无需用户名和密码（推荐）"
+                      },
+                      "user_id": {
+                        "type": "string",
+                        "description": "用户ID（可选）"
+                      }
+                    }
+                  },
                   "config": {
                     "type": "object",
-                    "description": "预留的工具配置参数（当前未使用，可选）"
+                    "description": "工具配置参数（可选）",
+                    "properties": {
+                      "session_type": {
+                        "type": "string",
+                        "description": "会话类型（可选）",
+                        "default": "redis"
+                      },
+                      "background": {
+                        "type": "string",
+                        "description": "背景信息（可选）"
+                      }
+                    }
                   },
                   "session_id": {
                     "type": "string",
@@ -26,25 +69,25 @@
                   },
                   "op": {
                     "type": "string",
-                    "description": "操作类型（必填）：\"get_runnable\" 获取可执行任务；\"update_status\" 更新任务状态",
+                    "description": "操作类型（必填）：get_runnable 获取可执行任务；update_status 更新任务状态",
                     "enum": ["get_runnable", "update_status"]
                   },
                   "task_id": {
                     "type": "integer",
-                    "description": "当 op 为 update_status 时，必填，要更新的任务ID"
+                    "description": "当 op 为 update_status 时必填，要更新的任务ID"
                   },
                   "status": {
                     "type": "string",
-                    "description": "当 op 为 update_status 时，必填，新状态，如 \"pending\" / \"running\" / \"completed\" / \"failed\" / \"cancelled\""
+                    "description": "当 op 为 update_status 时必填，新状态：pending / running / completed / failed / cancelled"
                   },
                   "adjust": {
                     "type": "boolean",
-                    "description": "是否需要根据当前任务结果调整后续任务（可选）",
+                    "description": "是否需要根据当前任务结果取消或调整后续未完成任务（可选，仅 op=update_status 时有效）",
                     "default": false
                   },
                   "reason": {
                     "type": "string",
-                    "description": "调整原因说明，仅在 adjust 为 True 时有意义（可选）"
+                    "description": "调整原因说明（op=update_status 且 adjust=true 时可选）"
                   }
                 },
                 "required": ["session_id", "op"]
@@ -68,21 +111,20 @@
                     },
                     "status": {
                       "type": "string",
-                      "description": "任务列表整体状态（pending/running/completed）"
+                      "description": "任务列表整体状态（pending/running/completed/empty）"
                     },
                     "tasks": {
                       "type": "array",
+                      "description": "全量任务列表（随接口路径可能为快照或更新后列表）",
                       "items": {
                         "type": "object",
                         "properties": {
                           "id": {
                             "type": "integer"
                           },
-                          "title": {
-                            "type": "string"
-                          },
-                          "detail": {
-                            "type": "string"
+                          "task": {
+                            "type": "string",
+                            "description": "任务内容（与 todo_list 缓存结构一致）"
                           },
                           "tools": {
                             "type": "array",
@@ -111,7 +153,7 @@
                     },
                     "runnable_tasks": {
                       "type": "array",
-                      "description": "当前可直接执行的任务列表",
+                      "description": "当前可直接执行的任务列表（get_runnable / update_status 成功时常见）",
                       "items": {
                         "type": "object"
                       }
@@ -140,4 +182,3 @@
     }
   }
 }
-

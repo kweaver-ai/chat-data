@@ -97,27 +97,29 @@ class TaskManager:
     def recalculate_overall_status(tasks: List[Dict[str, Any]]) -> str:
         """
         根据子任务状态计算任务列表整体状态
-        - 全部 completed: completed
-        - 存在 completed 且存在 pending/其他: running
+        - 全部处于终态（completed/failed/cancelled）: completed
+        - 存在 pending/running: running
         - 其他情况: pending
         """
         if not tasks:
             return TaskListStatus.COMPLETED.value
 
-        all_completed = all(
-            t.get("status") == TaskStatus.COMPLETED.value for t in tasks
+        terminal_statuses = (
+            TaskStatus.COMPLETED.value,
+            TaskStatus.FAILED.value,
+            TaskStatus.CANCELLED.value,
         )
-        any_completed = any(
-            t.get("status") == TaskStatus.COMPLETED.value for t in tasks
+        all_terminal = all(
+            t.get("status") in terminal_statuses for t in tasks
         )
         any_pending_or_running = any(
             t.get("status") in (TaskStatus.PENDING.value, TaskStatus.RUNNING.value)
             for t in tasks
         )
 
-        if all_completed:
+        if all_terminal:
             return TaskListStatus.COMPLETED.value
-        if any_completed and any_pending_or_running:
+        if any_pending_or_running:
             return TaskListStatus.RUNNING.value
         return TaskListStatus.PENDING.value
 

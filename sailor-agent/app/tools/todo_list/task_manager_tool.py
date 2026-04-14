@@ -22,7 +22,6 @@ from app.tools.base import (
     async_construct_final_answer,
     api_tool_decorator,
 )
-
 from .todo_list_tool import CACHE_EXPIRE_TIME, TOOL_NAME
 from .task_manager import TaskManager
 
@@ -295,7 +294,7 @@ class TaskManagerTool(LLMTool):
     @classmethod
     def from_config(cls, params: Dict[str, Any]) -> "TaskManagerTool":
         """
-        从配置创建工具实例。本工具不依赖 LLM，llm 传 None；auth/config 与 todo_list_tool 保持一致。
+        从配置创建工具实例。本工具不依赖 LLM；auth/config 与 todo_list_tool 保持一致。
         """
         auth_dict = params.get("auth", {})
         token = auth_dict.get("token", "")
@@ -450,7 +449,7 @@ class TaskManagerTool(LLMTool):
                                     },
                                     "reason": {
                                         "type": "string",
-                                        "description": "调整原因说明，仅在 adjust 为 True 时有意义（可选）"
+                                        "description": "调整原因说明（op=update_status 且 adjust=true 时可选）"
                                     },
                                 },
                                 "required": ["session_id", "op"],

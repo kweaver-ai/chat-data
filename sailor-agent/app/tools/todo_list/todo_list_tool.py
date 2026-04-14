@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import json
 from textwrap import dedent
 from typing import Any, Dict, List, Optional, Type
@@ -25,7 +26,7 @@ from app.tools.base import (
     async_construct_final_answer,
     api_tool_decorator,
 )
-from app.tools.todo_list.task_manager import TaskStatus, TaskListStatus
+from app.tools.todo_list.task_manager import TaskManager, TaskStatus, TaskListStatus
 from app.parsers.base import BaseJsonParser
 
 
@@ -38,13 +39,27 @@ CACHE_EXPIRE_TIME = 60 * 60 * 24
 # 工具名称
 TOOL_NAME = "todo_list_tool"
 
+# 任务列表操作模式（与 docs/todo_list.md 一致）
+TODO_LIST_MODE_GENERATE = "generate"
+TODO_LIST_MODE_ADJUST = "adjust"
+
 
 class TodoListArgs(BaseModel):
     """任务拆分工具入参"""
 
     query: str = Field(default="", description="由意图理解工具丰富后的用户问题")
     scene: str = Field(default="", description="由意图理解工具得出的用户问题场景")
-    strategy: str = Field(default="", description="指定当前场景下的拆解策略")
+    strategy: str = Field(
+        default="",
+        description="generate 模式下为拆解策略；adjust 模式下为调整原因（调节原因）",
+    )
+    mode: str = Field(
+        default=TODO_LIST_MODE_GENERATE,
+        description=(
+            '操作模式："generate" 新生成完整任务列表（默认）；'
+            '"adjust" 在会话已有未完成任务列表上按调整原因重排/增删未完成任务'
+        ),
+    )
     session_id: str = Field(default="", description="当前会话ID，用来获取/保存当前会话的任务列表")
     tools: List[Dict[str, str]] = Field(  # [{"name": "...","purpose": "..."}]
         default_factory=list,
@@ -59,9 +74,9 @@ class TodoListTool(LLMTool):
     这是一个将用户问题拆成一个个不可分割的任务列表的工具。
 
     功能：
-    - 根据会话ID获取历史任务列表
-    - 结合当前问题、场景和拆解策略，使用大模型拆解为任务列表
-    - 支持追问场景下，从某个拆解点重新规划后续任务
+    - 根据会话ID获取历史任务列表（若为空或已完成则视为无历史任务）
+    - mode=generate：结合问题、历史（可为空）与拆解策略，生成完整任务列表
+    - mode=adjust：在 Redis 中已有未完成任务列表上，按 strategy 中的调整原因修改未完成任务（已完成任务保持不变）
     - 将任务列表以 string 结构保存到 Redis（24 小时过期）
     """
 
@@ -75,15 +90,15 @@ class TodoListTool(LLMTool):
         参数:
         - query: 由意图理解工具丰富后的用户问题
         - scene: 由意图理解工具得出的用户问题场景
-        - strategy: 指定当前场景下的拆解策略
+        - strategy: generate 时为拆解策略；adjust 时为调整原因
+        - mode: generate（默认）新生成；adjust 调整已有未完成任务列表
         - session_id: 当前会话ID，用来获取当前会话的任务列表
         - tools: 可用工具列表（name/purpose），用于指导任务拆分为可落地的步骤
 
         该工具会：
-        1. 通过 session_id 从 Redis 中获取任务列表
-        2. 使用大模型判断当前问题与历史任务之间的关系，得到任务拆解点
-        3. 结合问题、拆解点、拆解策略，由大模型生成任务列表
-        4. 将任务列表标记为未开始状态，保存到 Redis（string 结构，24 小时过期），并返回
+        1. 通过 session_id 从 Redis 获取历史任务列表（查不到或已完成则视为无历史任务；adjust 时必须存在未完成列表）
+        2. 按 mode 调用大模型：新生成完整列表，或基于历史调整未完成任务
+        3. 保存到 Redis（string 结构，24 小时过期），并返回
         """
     )
 
@@ -167,8 +182,117 @@ class TodoListTool(LLMTool):
             raise ToolFatalError(f"保存任务列表到缓存失败: {str(e)}")
 
     # ---------------- 任务列表生成 ----------------
+
+    @staticmethod
+    def _task_text_from_raw(t: Dict[str, Any]) -> str:
+        tx = (t.get("task") or "").strip()
+        if tx:
+            return tx
+        title = (t.get("title") or t.get("name") or "").strip()
+        detail = (t.get("detail") or t.get("description") or "").strip()
+        if title and detail:
+            return f"{title} {detail}".strip()
+        return title or detail
+
+    def _apply_adjust_locked_completed(
+        self,
+        history_tasks: Dict[str, Any],
+        llm_tasks: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """调整模式：已 completed 的任务与历史完全一致，其余以模型输出为准（按 id 合并）。"""
+        hist = history_tasks.get("tasks") or []
+        locked: Dict[int, Dict[str, Any]] = {}
+        for t in hist:
+            try:
+                tid = int(t.get("id"))
+            except (TypeError, ValueError):
+                continue
+            if t.get("status") == TaskStatus.COMPLETED.value:
+                locked[tid] = copy.deepcopy(t)
+
+        by_id: Dict[int, Dict[str, Any]] = {}
+        for t in llm_tasks:
+            try:
+                tid = int(t.get("id", 0))
+            except (TypeError, ValueError):
+                continue
+            if tid <= 0:
+                continue
+            by_id[tid] = t
+
+        for tid, frozen in locked.items():
+            by_id[tid] = frozen
+
+        if not by_id:
+            raise ToolFatalError("大模型未返回有效任务")
+
+        ordered = [by_id[k] for k in sorted(by_id.keys())]
+        return self._finalize_tasks_shape(ordered, force_all_pending=False)
+
+    def _finalize_tasks_shape(
+        self,
+        tasks: List[Dict[str, Any]],
+        *,
+        force_all_pending: bool,
+    ) -> List[Dict[str, Any]]:
+        """统一为 Redis 结构（含 task 字段）；generate 时子任务一律 pending。"""
+        out: List[Dict[str, Any]] = []
+        for t in tasks:
+            try:
+                tid = int(t.get("id", 0))
+            except (TypeError, ValueError):
+                continue
+            if tid <= 0:
+                continue
+            blocked_by = t.get("blockedBy", []) or []
+            if not isinstance(blocked_by, list):
+                blocked_by = [blocked_by]
+            tools_used = t.get("tools", []) or []
+            if isinstance(tools_used, dict):
+                tools_used = [tools_used]
+            text = self._task_text_from_raw(t)
+            st = TaskStatus.PENDING.value if force_all_pending else (
+                t.get("status") or TaskStatus.PENDING.value
+            )
+            row: Dict[str, Any] = {
+                "id": tid,
+                "task": text,
+                "blockedBy": blocked_by,
+                "status": st,
+            }
+            if tools_used:
+                row["tools"] = tools_used
+            out.append(row)
+        return out
+
+    def _normalize_generate_tasks(
+        self,
+        raw_tasks: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """新生成：按顺序重排 id=1..n，与既有行为一致。"""
+        normalized: List[Dict[str, Any]] = []
+        for idx, t in enumerate(raw_tasks, start=1):
+            blocked_by = t.get("blockedBy", []) or []
+            if not isinstance(blocked_by, list):
+                blocked_by = [blocked_by]
+            tools_used = t.get("tools", []) or []
+            if isinstance(tools_used, dict):
+                tools_used = [tools_used]
+            text = self._task_text_from_raw(t)
+            row: Dict[str, Any] = {
+                "id": idx,
+                "task": text,
+                "blockedBy": blocked_by,
+                "status": TaskStatus.PENDING.value,
+            }
+            if tools_used:
+                row["tools"] = tools_used
+            normalized.append(row)
+        return normalized
+
     def _generate_tasks_with_llm(
         self,
+        mode: str,
         history_tasks: Optional[Dict[str, Any]],
         query: str,
         scene: str,
@@ -176,75 +300,112 @@ class TodoListTool(LLMTool):
         tools: List[Dict[str, str]],
     ) -> Dict[str, Any]:
         """
-        让大模型根据当前问题、任务列表、拆解策略，生成/调整任务列表。
+        调用大模型：mode=generate 新生成；mode=adjust 基于历史调整（strategy 为调整原因）。
         """
         history_tasks_obj = history_tasks or {
             "query": "",
             "status": TaskListStatus.PENDING.value,
+            "resorted": False,
             "tasks": [],
         }
 
-        prompt_content = dedent(
-            """
-            你是一个任务拆解专家。
+        if mode == TODO_LIST_MODE_ADJUST:
+            prompt_content = dedent(
+                """
+                你是一个任务列表调整专家。输入中有一份「历史任务列表」，其中部分任务可能已执行完成。
 
-            现在有一个用户问题需要被拆解为一组任务，要求：
-            - 该任务粒度「不可再拆」且「可执行」
-            - 任务之间有依赖，上一步的输出一定要是下一步的输入，保证流程严格
-            - 保证完整逻辑的同时，尽量减少步骤，避免不必要的执行步骤
-            - 根据各个工具的特点进行最优拆解，不需要所有的工具都用到
+                你会收到：
+                - 当前用户问题（query_now）
+                - 问题场景（scene）
+                - 调整原因（adjustment_reason），说明为什么要改、希望如何改
+                - 历史任务列表（history_tasks），包含各任务 id、task 文本、blockedBy、status
+                - 可用工具列表（tools）
 
-            我会给你：
-            - 当前用户问题（query_now）
-            - 问题场景（scene）
-            - 拆解策略说明（strategy），里面任务拆分的逻辑和要求
-            - 历史任务列表（history_tasks），可能为空（当前实现中，仅作为参考，不做局部复用拆解）
-            - 可用工具列表（tools）：包含每个工具的 name 与 purpose，请务必拆分成可由这些工具执行的最小可执行单元；
-              当某一步不需要工具时，也要明确标注其产出，以便后续工具消费。
+                你的任务：
+                - 根据调整原因，对「尚未完成」的任务进行增删改或重排依赖；已 status 为 completed 的任务必须保持完全不变（同一 id 下 task、blockedBy、status 均不得改动）。
+                - 输出一份**完整**的新任务列表（包含所有已完成任务原样保留 + 调整后的未完成任务）。
+                - blockedBy 只允许引用本次输出中存在的任务 id，不得循环依赖。
 
-            任务对象结构要求：
-            {
-              "query": "用户问题",
-              "status": "任务列表整体状态，初始为 pending（枚举：pending/running/completed）",
-              "tasks": [
+                顶层 JSON 结构：
                 {
-                  "id": 1,                     // 任务ID，从 1 开始递增
-                  "title": "任务标题，简洁表达要做什么",
-                  "detail": "任务详细内容，包含输入/输出、验收标准等",
-                  "tools": [                   // 本任务将使用到的工具（可为空数组）
-                    { "name": "tool_name", "inputs": "关键输入说明", "outputs": "期望产出说明" }
-                  ],
-                  "blockedBy": [ ... ],        // 依赖的任务ID 数组，可以为空数组
-                  "status": "pending"          // 任务状态（枚举：pending/running/completed/failed/cancelled），初始为 pending
+                  "query": "用户问题（使用 query_now）",
+                  "status": "任务列表整体状态（pending/running/completed 之一，需与任务实际进度一致）",
+                  "resorted": false,
+                  "tasks": [
+                    {
+                      "id": 1,
+                      "task": "任务内容",
+                      "blockedBy": [],
+                      "status": "pending|running|completed|failed|cancelled"
+                    }
+                  ]
                 }
-              ]
+
+                请只返回 JSON，不要包含多余的解释文字。
+                """
+            )
+            human_payload = {
+                "query_now": query,
+                "scene": scene,
+                "adjustment_reason": strategy,
+                "history_tasks": history_tasks_obj,
+                "tools": tools or [],
             }
+        else:
+            prompt_content = dedent(
+                """
+                你是一个任务拆解专家。
 
-            生成规则：
-            1. 所有任务的 status 必须初始化为 "pending"。
-            2. id 必须是从 1 开始连续递增的整数。
-            3. blockedBy 只允许引用已存在的任务 id，不能出现循环依赖。
-            4. 明确任务与工具的对应关系：
-               - 当可用工具（tools）能完成该任务时，请在任务文本中注明所用工具的 name 以及所需关键输入；
-               - 无需强制所有任务都绑定工具，但必须保证整条链路可落地、可执行；
-               - 尽量拆分为“工具可直接执行”的最小步骤，避免巨大笼统步骤。
-            5. 任务粒度要细到可以交给不同的工具或执行单元完成。
+                现在有一个用户问题需要被拆解为一组任务，要求：
+                - 该任务粒度「不可再拆」且「可执行」
+                - 任务之间有依赖，上一步的输出一定要是下一步的输入，保证流程严格
+                - 保证完整逻辑的同时，尽量减少步骤，避免不必要的执行步骤
+                - 根据各个工具的特点进行最优拆解，不需要所有的工具都用到
 
-            请只返回 JSON，不要包含多余的解释文字。
-            """
-        )
+                我会给你：
+                - 当前用户问题（query_now）
+                - 问题场景（scene）
+                - 拆解策略说明（strategy），里面任务拆分的逻辑和要求
+                - 历史任务列表（history_tasks），可能为空（仅作上下文参考）
+                - 可用工具列表（tools）：包含每个工具的 name 与 purpose
+
+                顶层 JSON 结构（与 Redis 缓存一致）：
+                {
+                  "query": "用户问题（使用 query_now）",
+                  "status": "pending",
+                  "resorted": false,
+                  "tasks": [
+                    {
+                      "id": 1,
+                      "task": "任务内容，可注明所用工具 name 及关键输入输出",
+                      "blockedBy": [],
+                      "status": "pending"
+                    }
+                  ]
+                }
+
+                生成规则：
+                1. 所有任务的 status 必须初始化为 "pending"。
+                2. id 必须是从 1 开始连续递增的整数。
+                3. blockedBy 只允许引用已存在的任务 id，不能出现循环依赖。
+                4. 任务粒度要细到可以交给不同的工具或执行单元完成。
+
+                请只返回 JSON，不要包含多余的解释文字。
+                """
+            )
+            human_payload = {
+                "query_now": query,
+                "scene": scene,
+                "strategy": strategy,
+                "history_tasks": history_tasks_obj,
+                "tools": tools or [],
+            }
 
         messages = [
             SystemMessage(content=prompt_content),
             HumanMessage(
                 content=json.dumps(
-                    {
-                        "query_now": query,
-                        "scene": scene,
-                        "strategy": strategy,
-                        "history_tasks": history_tasks_obj,
-                        "tools": tools or [],
-                    },
+                    human_payload,
                     ensure_ascii=False,
                     indent=2,
                 )
@@ -259,7 +420,6 @@ class TodoListTool(LLMTool):
             logger.error(f"大模型任务拆解失败: {e}")
             raise ToolFatalError(f"大模型任务拆解失败: {str(e)}")
 
-        # 简单校验与兜底
         if not isinstance(result, dict):
             raise ToolFatalError("大模型返回的任务列表格式不正确")
 
@@ -267,35 +427,27 @@ class TodoListTool(LLMTool):
         if not isinstance(tasks, list) or not tasks:
             raise ToolFatalError("大模型未生成任何任务")
 
-        # 统一补齐字段并强制初始状态
-        normalized_tasks: List[Dict[str, Any]] = []
-        for idx, t in enumerate(tasks, start=1):
-            title = t.get("title") or t.get("name") or ""
-            detail = t.get("detail") or t.get("description") or ""
-            tools_used = t.get("tools", []) or []
-            if isinstance(tools_used, dict):
-                tools_used = [tools_used]
-            # 兜底字段
-            blocked_by = t.get("blockedBy", []) or []
-            if not isinstance(blocked_by, list):
-                blocked_by = [blocked_by]
-            normalized_tasks.append(
-                {
-                    "id": idx,
-                    "title": title,
-                    "detail": detail,
-                    "tools": tools_used,
-                    "blockedBy": blocked_by,
-                    "status": TaskStatus.PENDING.value,
-                }
-            )
+        resorted = bool(result.get("resorted", False))
 
-        task_obj = {
+        if mode == TODO_LIST_MODE_ADJUST:
+            if not history_tasks:
+                raise ToolFatalError("调整模式缺少历史任务列表")
+            merged = self._apply_adjust_locked_completed(history_tasks, tasks)
+            overall = TaskManager.recalculate_overall_status(merged)
+            return {
+                "query": query,
+                "status": overall,
+                "resorted": resorted,
+                "tasks": merged,
+            }
+
+        normalized_tasks = self._normalize_generate_tasks(tasks)
+        return {
             "query": query,
             "status": TaskListStatus.PENDING.value,
+            "resorted": resorted,
             "tasks": normalized_tasks,
         }
-        return task_obj
 
     # ---------------- LLMTool 接口实现 ----------------
 
@@ -305,6 +457,7 @@ class TodoListTool(LLMTool):
         query: str,
         scene: str = "",
         strategy: str = "",
+        mode: str = TODO_LIST_MODE_GENERATE,
         session_id: str = "",
         tools: Optional[List[Dict[str, str]]] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None,
@@ -317,6 +470,7 @@ class TodoListTool(LLMTool):
                 query=query,
                 scene=scene,
                 strategy=strategy,
+                mode=mode,
                 session_id=session_id,
                 tools=tools or [],
                 run_manager=run_manager,
@@ -329,6 +483,7 @@ class TodoListTool(LLMTool):
         query: str,
         scene: str = "",
         strategy: str = "",
+        mode: str = TODO_LIST_MODE_GENERATE,
         session_id: str = "",
         tools: Optional[List[Dict[str, str]]] = None,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
@@ -351,11 +506,26 @@ class TodoListTool(LLMTool):
                     "tasks": [],
                 }
 
-            # 1. 通过会话ID获取任务列表（当前实现仅作为上下文参考，不做局部拆解复用）
+            op_mode = (mode or TODO_LIST_MODE_GENERATE).strip()
+            if op_mode not in (TODO_LIST_MODE_GENERATE, TODO_LIST_MODE_ADJUST):
+                return {
+                    "result": f"mode 参数不合法：{mode}，仅支持 generate 或 adjust",
+                    "session_id": session_id,
+                    "tasks": [],
+                }
+
             history_tasks = self._load_session_tasks(session_id)
 
-            # 2. 直接结合当前问题、历史任务和拆解策略，让大模型生成全新的任务列表
+            if op_mode == TODO_LIST_MODE_ADJUST:
+                if not history_tasks:
+                    return {
+                        "result": "adjust 模式下会话没有可调整的任务列表（不存在或已全部完成）",
+                        "session_id": session_id,
+                        "tasks": [],
+                    }
+
             task_obj = self._generate_tasks_with_llm(
+                mode=op_mode,
                 history_tasks=history_tasks,
                 query=query,
                 scene=scene,
@@ -363,12 +533,17 @@ class TodoListTool(LLMTool):
                 tools=(tools or []),
             )
 
-            # 3. 将任务列表标记为未开始状态，同时保存问题，保存到 Redis，然后返回
             self._save_session_tasks(session_id, task_obj)
 
+            ok_msg = (
+                "任务列表调整成功"
+                if op_mode == TODO_LIST_MODE_ADJUST
+                else "任务列表生成成功"
+            )
             return {
-                "result": "任务列表生成成功",
+                "result": ok_msg,
                 "session_id": session_id,
+                "mode": op_mode,
                 "tasks": task_obj.get("tasks", []),
                 "status": task_obj.get("status"),
             }
@@ -454,7 +629,8 @@ class TodoListTool(LLMTool):
           },
           "query": "用户问题",            // 必填
           "scene": "问题场景",           // 可选
-          "strategy": "拆解策略说明",    // 可选
+          "strategy": "拆解策略或调整原因", // generate 为拆解策略；adjust 为调整原因
+          "mode": "generate",           // 可选，generate（默认）| adjust
           "session_id": "会话ID",       // 必填，用于在 Redis 中区分任务列表
           "tools": [                   // 可选，可用工具列表
             {"name": "tool_name", "purpose": "该工具的作用与适用场景"}
@@ -503,6 +679,7 @@ class TodoListTool(LLMTool):
         query = params.get("query", "")
         scene = params.get("scene", "")
         strategy = params.get("strategy", "")
+        mode = params.get("mode", TODO_LIST_MODE_GENERATE)
         session_id = params.get("session_id", "")
         tools = params.get("tools", [])
 
@@ -511,6 +688,7 @@ class TodoListTool(LLMTool):
                 "query": query,
                 "scene": scene,
                 "strategy": strategy,
+                "mode": mode,
                 "session_id": session_id,
                 "tools": tools,
             }
@@ -523,7 +701,7 @@ class TodoListTool(LLMTool):
         return {
             "post": {
                 "summary": "todo_list_tool",
-                "description": "任务拆分工具，根据用户问题、场景和拆解策略生成任务列表，并保存到 Redis。",
+                "description": "任务拆分工具：mode=generate 新生成任务列表；mode=adjust 按原因调整未完成任务。结果保存到 Redis。",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -586,7 +764,13 @@ class TodoListTool(LLMTool):
                                     },
                                     "strategy": {
                                         "type": "string",
-                                        "description": "当前场景下的拆解策略说明（可选）",
+                                        "description": "generate 时为拆解策略；adjust 时为调整原因（可选）",
+                                    },
+                                    "mode": {
+                                        "type": "string",
+                                        "description": "generate 新生成（默认）；adjust 在已有未完成任务列表上调整",
+                                        "enum": ["generate", "adjust"],
+                                        "default": "generate",
                                     },
                                     "session_id": {
                                         "type": "string",
@@ -639,6 +823,10 @@ class TodoListTool(LLMTool):
                                     "properties": {
                                         "result": {"type": "string"},
                                         "session_id": {"type": "string"},
+                                        "mode": {
+                                            "type": "string",
+                                            "enum": ["generate", "adjust"],
+                                        },
                                         "status": {"type": "string"},
                                         "tasks": {
                                             "type": "array",
@@ -646,8 +834,7 @@ class TodoListTool(LLMTool):
                                                 "type": "object",
                                                 "properties": {
                                                     "id": {"type": "integer"},
-                                                    "title": {"type": "string"},
-                                                    "detail": {"type": "string"},
+                                                    "task": {"type": "string"},
                                                     "tools": {
                                                         "type": "array",
                                                         "items": {

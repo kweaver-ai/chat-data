@@ -2,14 +2,20 @@
   "openapi": "3.0.0",
   "info": {
     "title": "todo_list_tool",
-    "description": "任务拆分工具，根据用户问题、场景和拆解策略生成任务列表，并保存到 Redis。",
+    "description": "任务拆分工具：mode=generate 新生成任务列表；mode=adjust 按原因调整未完成任务。结果保存到 Redis。",
     "version": "1.0.0"
   },
+  "servers": [
+    {
+      "url": "http://af-sailor-agent:9595",
+      "description": "本地或网关基地址；导入后请改为实际 AF Sailor Agent 服务根 URL（须含协议，如 https://host:port）"
+    }
+  ],
   "paths": {
-    "/todo_list_tool": {
+    "/api/af-sailor-agent/v1/assistant/tools/todo_list": {
       "post": {
         "summary": "todo_list_tool",
-        "description": "任务拆分工具，根据用户问题、场景和拆解策略生成任务列表，并保存到 Redis。",
+        "description": "任务拆分工具：mode=generate 新生成；mode=adjust 调整已有未完成任务列表。",
         "requestBody": {
           "content": {
             "application/json": {
@@ -72,11 +78,35 @@
                   },
                   "strategy": {
                     "type": "string",
-                    "description": "当前场景下的拆解策略说明（可选）"
+                    "description": "generate 时为拆解策略；adjust 时为调整原因（可选）"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "description": "generate 新生成（默认）；adjust 在已有未完成任务列表上调整",
+                    "enum": ["generate", "adjust"],
+                    "default": "generate"
                   },
                   "session_id": {
                     "type": "string",
                     "description": "会话ID，用于区分并缓存任务列表（必填）"
+                  },
+                  "tools": {
+                    "type": "array",
+                    "description": "可用工具列表，用于指导任务拆分（可选）",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "工具名称"
+                        },
+                        "purpose": {
+                          "type": "string",
+                          "description": "工具作用/适用场景"
+                        }
+                      },
+                      "required": ["name", "purpose"]
+                    }
                   }
                 },
                 "required": ["query", "session_id"]
@@ -102,6 +132,10 @@
                       "type": "string",
                       "description": "任务列表整体状态（pending/running/completed）"
                     },
+                    "mode": {
+                      "type": "string",
+                      "enum": ["generate", "adjust"]
+                    },
                     "tasks": {
                       "type": "array",
                       "items": {
@@ -110,10 +144,7 @@
                           "id": {
                             "type": "integer"
                           },
-                          "title": {
-                            "type": "string"
-                          },
-                          "detail": {
+                          "task": {
                             "type": "string"
                           },
                           "tools": {
