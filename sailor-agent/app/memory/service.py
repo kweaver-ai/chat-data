@@ -174,7 +174,7 @@ class MemoryService:
 
         def _inner(repo: MemoryRepository) -> None:
             logger.info("批量删除记忆文档：count=%d", len(ids))
-            # 当前模型未显式设置外键级联，先删向量块再删文档，避免孤儿 chunk
+            # 当前模型未显式设置外键级联，先删向量块再删 t_memory_documents 行，避免孤儿 chunk
             repo.delete_chunks_by_document_ids(ids)
             repo.delete_documents(ids)
 

@@ -88,17 +88,58 @@ async def memory_write_api(params: Dict[str, Any] = Body(...)) -> Dict[str, Any]
         }
       ]
     }
+
+    删除某条记忆：在 documents 中传入该条 id，并将 text 或 title 设为字符串 "null"（与 memory_write 工具一致）。
     """
+    def _is_null_string(value: Any) -> bool:
+        # 只有当传入值本身是字符串 "null" 时才触发删除（与 MemoryWriteTool 一致）
+        return isinstance(value, str) and value.strip() == "null"
+
     try:
-        payload = MemoryWriteToolInput(
-            user_id=coerce_memory_user_id(params.get("user_id")),
-            documents=list(params.get("documents") or []),
-        )
+        raw_documents = list(params.get("documents") or [])
+
+        delete_ids: list[str] = []
+        remaining_documents: list[dict[str, Any]] = []
+
+        for item in raw_documents:
+            if not isinstance(item, dict):
+                continue
+
+            if _is_null_string(item.get("text")) or _is_null_string(
+                item.get("title")
+            ):
+                raw_id = str(item.get("id") or "").strip()
+                if raw_id:
+                    delete_ids.append(raw_id)
+                else:
+                    logger.warning(
+                        "[memory_write_api] 删除请求但缺少 id: text=%r title=%r",
+                        item.get("text"),
+                        item.get("title"),
+                    )
+                continue
+
+            remaining_documents.append(item)
+
+        user_id = coerce_memory_user_id(params.get("user_id"))
     except Exception as exc:  # noqa: BLE001
         logger.error(f"[memory_write_api] 参数解析失败: {exc}")
         return {"written_ids": []}
 
     tools = MemoryTools()
-    result = tools.write(payload)
-    return {"written_ids": result.written_ids}
+
+    # 先物理删除，再写入其余条目（与 MemoryWriteTool 一致）
+    if delete_ids:
+        tools.delete_documents(list(set(delete_ids)))
+
+    written_ids: list[str] = []
+    if remaining_documents:
+        payload = MemoryWriteToolInput(
+            user_id=user_id,
+            documents=remaining_documents,
+        )
+        result = tools.write(payload)
+        written_ids = result.written_ids
+
+    return {"written_ids": written_ids}
 
