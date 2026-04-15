@@ -85,6 +85,7 @@ def parse_llm_from_model_factory(inner_llm_dict: dict, headers: dict = {
             "model_name": _settings.TOOL_LLM_MODEL_NAME,
             "openai_api_key": _settings.TOOL_LLM_OPENAI_API_KEY,
             "openai_api_base": _settings.TOOL_LLM_OPENAI_API_BASE,
+            "temperature": 0.1
         }
 
     return llm_dict

@@ -3,7 +3,7 @@ import json
 import requests
 import sseclient
 from config import settings
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urljoin
 from app.logs.logger import logger
 
@@ -17,6 +17,7 @@ class ADPService(object):
         self.adp_ontology_manager_host = settings.ADP_ONTOLOGY_MANAGER_HOST
         self.adp_ontology_query_host = settings.ADP_ONTOLOGY_QUERY_HOST
         self.adp_model_api_host = settings.ADP_MODEL_API_HOST
+        self.adp_mdl_data_model_host = settings.DATA_MODEL_URL
 
         self.agent_key = "01K4PQ0X84MKYV5X1ZB9TW07K9"
 
@@ -29,6 +30,8 @@ class ADPService(object):
         self.dip_ontology_manager_url_internal = self.adp_ontology_manager_host+"/api/ontology-manager/in/v1/knowledge-networks/{kn_id}/object-types"
         self.ontology_query_by_object_types_external = "/api/ontology-query/v1/knowledge-networks/{kn_id}/object-types/{class_id}"
         self.agent_embedding_url = "{}/api/private/mf-model-api/v1/small-model/embeddings".format(self.adp_model_api_host)
+        self.metric_list_url = "{}/api/mdl-data-model/v1/metric-models".format(self.adp_mdl_data_model_host)
+
     def stream_debug(self, query, token):
         headers = {
             "authorization": token
@@ -226,3 +229,99 @@ class ADPService(object):
 
         data = resp_json.get("data") or []
         return {"data": data}
+
+    def get_metric_list(self, token: str, extra_params: Optional[Dict[str, Any]] = None) -> dict:
+        """
+        分页查询指标列表。默认 limit 较小，全量拉取请在调用方循环增大 offset。
+
+        返回参数样例：
+        {
+    "entries": [
+        {
+            "id": "d626ne6avnnd8il5gnm0",
+            "name": "自然人持股比例",
+            "catalog_id": "",
+            "catalog_content": "",
+            "measure_name": "__m.d626ne6avnnd8il5gnm0",
+            "group_id": "",
+            "group_name": "",
+            "tags": [],
+            "comment": "",
+            "metric_type": "atomic",
+            "data_view_id": "",
+            "query_type": "sql",
+            "formula": "",
+            "formula_config": {
+                "aggr_expression": {
+                    "field": "f_catalog_id",
+                    "aggr": "count_distinct"
+                }
+            },
+            "analysis_dimensions": [
+                {
+                    "name": "f_authority_id",
+                    "type": "string",
+                    "display_name": "权限域目前为预留字段",
+                    "comment": "权限域（目前为预留字段）"
+                }
+            ],
+            "date_field": "",
+            "measure_field": "__sql_value",
+            "unit_type": "numUnit",
+            "unit": "none",
+            "builtin": false,
+            "is_calendar_interval": 1,
+            "creator": {
+                "id": "",
+                "type": "",
+                "name": ""
+            },
+            "create_time": 1770286008743,
+            "update_time": 1770286008743,
+            "operations": [
+                "authorize",
+
+            ]
+        },
+
+    ],
+    "total_count": 43
+}
+        """
+        if not token.startswith("Bearer"):
+            token = f"Bearer {token}"
+        headers = {"Authorization": token}
+        params: Dict[str, Any] = {
+            "name_pattern": "",
+            "sort": "update_time",
+            "query_type": "",
+            "direction": "desc",
+            "offset": 0,
+            "limit": 10,
+            "tag": "",
+            "group_id": "__all",
+            "simple_info": False,
+            "metric_type": "",
+        }
+        if extra_params:
+            params.update(extra_params)
+        try:
+            resp = requests.get(
+                self.metric_list_url,
+                headers=headers,
+                params=params,
+                verify=False,
+            )
+        except Exception as e:
+            logger.error(f"请求 ADP metric 服务异常: {e}")
+            return {"entries": [], "total_count": 0}
+        if resp.status_code != 200:
+            logger.error(f"请求 ADP metric 列表失败: status={resp.status_code}, body={resp.text[:500]}")
+            return {"entries": [], "total_count": 0}
+        try:
+            resp_json = resp.json()
+        except Exception as e:
+            logger.error(f"解析 ADP metric 列表响应为 JSON 失败: {e}")
+            return {"entries": [], "total_count": 0}
+
+        return resp_json

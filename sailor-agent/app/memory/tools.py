@@ -134,4 +134,3 @@ class MemoryTools:
         物理删除记忆文档及其对应的向量块。
         """
         self._service.delete_documents(ids)
-

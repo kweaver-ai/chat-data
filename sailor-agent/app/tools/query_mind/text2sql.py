@@ -1029,7 +1029,7 @@ class Text2SQLTool(LLMTool):
 
         # 解析 inner_llm 参数
         inner_llm_dict = params.get("inner_llm", {})
-        inner_llm_dict["temperature"] = 0.1
+
         if inner_llm_dict["name"] == "deepseek-v3.2-vol":
             inner_llm_dict["max_tokens"] = 20000
         logger.info(f"inner_llm_dict: {inner_llm_dict}")

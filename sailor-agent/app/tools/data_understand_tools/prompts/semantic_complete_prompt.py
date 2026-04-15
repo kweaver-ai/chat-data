@@ -1,6 +1,7 @@
 from typing import Optional, List
 
 from app.tools.prompts.base import BasePrompt
+from app.utils.model_types import ModelType4Prompt
 from datetime import datetime
 
 prompt_template_cn = """
@@ -300,6 +301,93 @@ prompt_template_cn = """
 输出检测结果（仅JSON，无其他文字）。
 """
 
+# DeepSeek V3.2：任务专用、强约束、无长示例（减 token、降跑偏）
+prompt_template_cn_deepseek_v32 = """
+[任务] 语义补全质量检测。你的唯一合法输出：一个 UTF-8 JSON 对象（从根对象起可被标准解析器完整解析，无包裹层）。
+
+## 硬约束（任一违反即错误）
+1. 禁止 Markdown（含 ```）、禁止前后任何非 JSON 文本、禁止 `//` 与 `#` 注释、禁止尾随逗号。
+2. 禁止输出思考过程、步骤说明、自我检查或与任务无关的寒暄。
+3. `views` 数组顺序与长度必须与输入一致：每个输入视图对应**恰好一个**输出元素，禁止增删视图。
+4. `view_id`、`view_tech_name`、`field_id` 必须与输入**逐字相同**（含大小写、空格；`field_id` 可能为短数字字符串，禁止改写）。
+5. 顶层每个视图的 `view_business_name`、`desc`：若该视图**不需要**视图级补全（`view_need_completion.need_completion` 为 false），则必须与输入**完全一致**（原文复制，含空串）；若需要补全（true），则顶层填**最终采用值**（与 `suggested_business_name` / `suggested_description` 一致）。
+6. `fields_need_completion` **只列**需处理的字段；ACCURATE 字段**不得**出现（后处理会补 `fields_accurate`）。
+7. `issue_type` 只能是 MISSING、INACCURATE、INCOMPLETE 三者之一。
+8. `field_role` 为输入中的值（含 null）；若规则要求补全角色则必须额外给出整数 `suggested_field_role`（1–8）。
+9. 禁止编造输入中不存在的视图/字段；禁止复述整段输入或粘贴 `fields` 全量列表。
+
+## 执行顺序（内部推理，勿输出）
+① 按视图遍历 `fields` → 决定是否进入 `fields_need_completion`。② 判定视图级名称/描述。③ 填各视图 `summary` 与根 `summary`。④ 用 `field_comment`（若有）辅助判断。
+
+## 计数（必须自洽，用整数）
+- 视图内：`total_fields` = 该视图输入 `fields` 的长度；`need_completion_count` = 本视图 `fields_need_completion` 的长度；`accurate_count` = `total_fields - need_completion_count`（不得为负）。
+- 根：`total_views` = `views` 长度；`total_fields` = 各视图 `total_fields` 之和；`need_completion_count` / `accurate_count` 同理为各视图之和。
+
+## 字段描述 issue（简判）
+- MISSING：空/null/占位（无、待补充、N/A、暂无描述等）
+- INACCURATE：与语义明显不符、过短(<10 字且无实质信息)、仅重复技术名、与类型明显矛盾
+- INCOMPLETE：有字但缺业务含义/取值或典型使用场景（在输入信息足以推断时）
+- 否则 ACCURATE → 不写入 `fields_need_completion`
+
+## 字段级补全触发
+- `field_business_name` 空/null/非中文 → 必须 `suggested_business_name`（简洁中文）。
+- `field_role` 空/null → 必须 `suggested_field_role`（1–8）。
+- 字段需 issue 且需要改写描述时 → 必须 `suggested_description`（MISSING 几乎必给）。
+
+## 角色编码（整数 1–8）
+1 业务主键 2 关联标识 3 业务状态 4 时间 5 业务指标 6 业务特征 7 审计 8 技术
+
+## 视图级补全
+- 视图 `view_business_name` 空/null/非中文 → `view_need_completion.need_completion=true` 且按需 `suggested_business_name`。
+- 视图 `desc` 触发 MISSING/INACCURATE/INCOMPLETE → 按需 `suggested_description`。
+- `need_completion` 为 false 时，`view_need_completion` 可仅含键 `need_completion` 且值为 false（勿嵌套多余键）。
+- `need_completion=true` 时必填：`current_business_name`、`current_description`、`issue_type`、`issue_reason`，以及按需的 `suggested_*`。
+
+## `fields_need_completion` 单条
+必填：`field_id`、`field_tech_name`、`field_business_name`、`field_role`、`issue_type`、`current_description`（与输入 `field_desc` 一致）、`issue_reason`（**一句短因**，建议≤40字）。
+按需：`suggested_description`、`suggested_business_name`、`suggested_field_role`。
+
+## 根结构键名（须齐全）
+根级含 `views`（数组）与 `summary`（对象）。每个 view 须含：`view_id`,`view_tech_name`,`view_business_name`,`desc`,`view_need_completion`,`fields_need_completion`,`summary`。
+
+## 用户输入
+{{input_data}}
+
+## 背景（空则忽略）
+{{background}}
+"""
+
+prompt_template_en_deepseek_v32 = """
+[Task] Semantic completion quality check. Your only valid output: one JSON object (single root object, parseable as JSON, no wrapper).
+
+## Hard constraints
+1. No markdown (no ```), no text before/after JSON, no comments, no trailing commas.
+2. No chain-of-thought, no step lists, no self-check narration.
+3. `views` must mirror the input 1:1 in order and length—no extra/missing views.
+4. `view_id`, `view_tech_name`, `field_id` must match input **verbatim** (including empty strings; `field_id` may be short numeric strings).
+5. Top-level per-view `view_business_name` and `desc`: if `view_need_completion.need_completion` is false, copy **exactly** from input; if true, set to the **final** values (same as `suggested_*` you provide).
+6. `fields_need_completion` contains **only** non-ACCURATE fields; omit ACCURATE fields entirely.
+7. `issue_type` must be exactly one of: MISSING, INACCURATE, INCOMPLETE.
+8. Echo `field_role` from input (including null); when rules require filling role, add integer `suggested_field_role` in 1–8.
+9. Do not invent views/fields; do not paste the full input or full `fields` arrays.
+
+## Counts (must be consistent integers)
+Per view: `total_fields` = input `fields` length; `need_completion_count` = length of `fields_need_completion`; `accurate_count` = `total_fields - need_completion_count` (≥0).
+Root: `total_views` = len(views); `total_fields` / `need_completion_count` / `accurate_count` = sums across views.
+
+## Field issues, business names, roles, view-level fixes
+Same criteria as the Chinese template: MISSING/INACCURATE/INCOMPLETE vs ACCURATE; non-Chinese/empty field business name → `suggested_business_name`; empty role → `suggested_field_role`; weak view name/desc → `view_need_completion` with suggestions. For MISSING issues that need a rewrite, provide `suggested_description`. Keep `issue_reason` to one short sentence (≤ ~40 Chinese chars equivalent).
+
+## Root keys
+Root contains `views` (array) and `summary` (object). Each view must include: `view_id`,`view_tech_name`,`view_business_name`,`desc`,`view_need_completion`,`fields_need_completion`,`summary`.
+
+## User input
+{{input_data}}
+
+## Background (optional)
+{{background}}
+"""
+
 prompt_suffix = {
     "cn": "请用中文回答",
     "en": "Please answer in English"
@@ -310,6 +398,11 @@ prompts = {
     "en": prompt_template_cn + prompt_suffix["en"]
 }
 
+prompts_deepseek_v32 = {
+    "cn": prompt_template_cn_deepseek_v32.strip() + "\n\n" + prompt_suffix["cn"] + " 输出：仅 JSON。",
+    "en": prompt_template_en_deepseek_v32.strip() + "\n\n" + prompt_suffix["en"] + " Output: JSON only.",
+}
+
 
 class SemanticCompletePrompt(BasePrompt):
     templates: dict = prompts
@@ -317,8 +410,23 @@ class SemanticCompletePrompt(BasePrompt):
     current_date_time: str = ""
     input_data: list = []
     background: str = ""
+    model_type: str = ""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         now_time = datetime.now()
         self.current_date_time = now_time.strftime("%Y-%m-%d %H:%M:%S")
+
+    @staticmethod
+    def _use_deepseek_v32_prompt(model_type: str) -> bool:
+        mt = (model_type or "").lower().strip()
+        if not mt:
+            return False
+        if mt == ModelType4Prompt.DEEPSEEK_V32.value:
+            return True
+        return mt.startswith("deepseek-v3.2") or mt.startswith("deepseek-v3-2")
+
+    def custom_template(self) -> str:
+        if self._use_deepseek_v32_prompt(self.model_type):
+            return prompts_deepseek_v32.get(self.language) or prompts_deepseek_v32["cn"]
+        return self.get_prompt(self.language)

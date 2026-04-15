@@ -33,39 +33,55 @@ from app.tools.basic_tools.prompts.intent_router_prompt import IntentRouterPromp
 from app.service.adp_service import ADPService
 
 
-
-DEFAULT_INTENTS: Dict[str, Dict[str, List[str]]] = {
+DEFAULT_INTENTS: Dict[str, Dict[str, Any]] = {
     "找数/问数_找表": {
-        "keywords": ["找表", "数据表", "表名", "数据表格"],
-        "examples": ["帮我找2025年销售数据表", "用户留存率的表叫什么"],
+        "keywords": ["找表", "数据表", "表名", "数据表格", "字段", "部门"],
+        "examples": ["帮我找2025年销售数据表", "用户留存率的表叫什么", "包含姓名字段的表有几张", "根据相关职责查询部门", "主责部门查询",
+                     "应该由什么部门负责财务"],
+        "route": ["找数/问数_找表"],
+        "notes": "找表不需要条件澄清"
     },
     "找数/问数_数据查询": {
         "keywords": ["查询", "查一下", "是多少", "数据值", "筛选","过滤","排除","大于","小于","等于"],
-        "examples": ["查询2025年Q1销售额", "北京地区用户数是多少", "筛选出客单价大于1000的订单", "排除2024年的数据"],
+        "examples": ["查询2025年Q1销售额", "北京地区用户数是多少", "筛选出客单价大于1000的订单", "查找包含企业注册资本金信息的数据表，并查询注册资本金数值排名前10%的企业名称"],
+        "route": ["找数/问数_找表", "找数/问数_数据查询"],
+        "notes": ""
     },
     "数据分析_趋势": {
         "keywords": ["趋势","变化","走势","月度变化"],
         "examples": ["分析近6个月的用户增长趋势", "销售额的月度变化趋势是什么"],
+        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据分析_趋势"],
+        "notes": ""
     },
     "数据分析_对比": {
         "keywords": ["对比", "比较", "和...比", "差异"],
         "examples": ["对比北京和上海的转化率", "2024和2025年的复购率对比"],
+        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据分析_对比"],
+        "notes": ""
     },
     "数据分析_归因": {
         "keywords": ["原因", "归因", "为什么", "分析...原因"],
         "examples": ["分析销售额下降的原因", "为什么Q2的用户留存率降"],
+        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据分析_归因"],
+        "notes": ""
     },
     "数据分析_预测": {
         "keywords": ["预测", "预估", "预计", "推算"],
         "examples": ["筛选出客单价大于1000的订单", "排除2024年的数据"],
+        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据分析_预测"],
+        "notes": ""
     },
     "数据解读_核心结论": {
         "keywords": ["解读", "结论", "总结", "亮点"],
         "examples": ["解读一下这份用户行为数据的核心结论", "总结下Q2的运营数据亮点"],
+        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据解读_核心结论"],
+        "notes": ""
     },
     "报告编写": {
         "keywords": ["报告", "初稿", "写一份", "生成报告"],
         "examples": ["基于Q2销售数据生成分析报告初稿", "写一份用户增长数据的周报"],
+        "route": ["找数/问数_找表", "找数/问数_数据查询", "报告编写"],
+        "notes": ""
     }
 }
 
@@ -75,6 +91,7 @@ def cosine_similarity(vec1, vec2):
     norm_vec1 = np.linalg.norm(vec1)
     norm_vec2 = np.linalg.norm(vec2)
     return dot_product / (norm_vec1 * norm_vec2)
+
 
 class IntentRouterArgs(BaseModel):
     """意图路由工具入参"""
@@ -86,11 +103,11 @@ class IntentRouterArgs(BaseModel):
         description="用于大模型意图识别的背景信息/参考上下文（可选）。当需要调用大模型澄清或做最终判别时会传入提示词。",
     )
 
-    intents: Dict[str, Dict[str, List[str]]] = Field(
+    intents: Dict[str, Dict[str, Any]] = Field(
         default_factory=lambda: DEFAULT_INTENTS,
         description=(
-            "意图配置，形如：{intent_name: {keywords: [...], examples: [...]}}。"
-            "keywords/examples 均为字符串列表。"
+            "意图配置，形如：{intent_name: {keywords: [...], examples: [...], notes: ...}}。"
+            "keywords/examples 为字符串列表，notes 支持字符串或字符串列表。"
         ),
     )
 
@@ -112,7 +129,7 @@ class IntentRouterArgs(BaseModel):
 
     report_intents: bool = Field(
         default=True,
-        description="是否在日志中输出意图配置报告（意图名称/关键词/示例）",
+        description="是否在日志中输出意图配置报告（意图名称/关键词/示例/注意事项）",
     )
 
     enable_field_clarify: bool = Field(
@@ -122,6 +139,7 @@ class IntentRouterArgs(BaseModel):
 
 
 _SETTINGS = get_settings()
+SQL_RISK_KEYWORDS = ("delete", "update", "insert", "alter", "drop")
 
 
 class IntentRouterTool(LLMTool):
@@ -150,6 +168,85 @@ class IntentRouterTool(LLMTool):
     adp_service: Any = None
     args_schema: Type[BaseModel] = IntentRouterArgs
 
+    @classmethod
+    def _contains_sql_risk_tokens(cls, query: str) -> bool:
+        """轻量规则：识别用户问题中是否出现 SQL 高危操作关键词。"""
+        q = (query or "").strip().lower()
+        if not q:
+            return False
+        has_sql_ctx = any(token in q for token in ("sql", "数据库", "表", "语句"))
+        has_risk_kw = any(re.search(rf"\b{re.escape(kw)}\b", q) for kw in SQL_RISK_KEYWORDS)
+        # 既兼容明确 SQL 场景，也兼容直接输入 SQL 语句（例如 "delete from ..."）
+        return bool(has_risk_kw and (has_sql_ctx or re.search(r"\b(from|table|where|set|into)\b", q)))
+
+    async def _llm_sql_risk_review(self, query: str) -> Dict[str, Any]:
+        """
+        使用大模型对疑似 SQL 高危请求做二次判定，避免误伤。
+        返回: {"blocked": bool, "reason": str}
+        """
+        if not getattr(self, "llm", None):
+            return {"blocked": True, "reason": "命中 SQL 高危操作关键词，且未配置 LLM，按安全策略拦截。"}
+
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                SystemMessage(
+                    content=(
+                        "你是 SQL 安全审查助手。"
+                        "请判断用户输入是否在请求执行或生成具有数据破坏风险的 SQL 操作。"
+                        "高危操作包括：DELETE、UPDATE、INSERT、ALTER、DROP。"
+                        "仅输出 JSON：{\"blocked\": true/false, \"reason\": \"...\"}。不要输出其他文本。"
+                    )
+                ),
+                HumanMessagePromptTemplate.from_template("用户输入：{query}"),
+            ]
+        )
+        messages = prompt.format_messages(query=(query or "").strip())
+        resp = await self.llm.ainvoke(messages)
+        content = getattr(resp, "content", "") or ""
+        text = content.strip()
+        if not text.startswith("{"):
+            l = text.find("{")
+            r = text.rfind("}")
+            if l != -1 and r != -1 and r > l:
+                text = text[l : r + 1]
+        try:
+            parsed = json.loads(text)
+            blocked = bool(parsed.get("blocked", False))
+            reason = str(parsed.get("reason", "") or "").strip() or "SQL 风险审查结果"
+            return {"blocked": blocked, "reason": reason}
+        except Exception:
+            # 解析失败时采取保守策略
+            return {"blocked": True, "reason": "SQL 风险审查解析失败，按安全策略拦截。"}
+
+    def _build_sql_risk_block_result(self, query: str, reason: str) -> Dict[str, Any]:
+        safe_question = "请改为只读查询需求（例如 SELECT），并明确查询目标与过滤条件。"
+        summary_text = (
+            f"用户问题：{(query or '').strip()}\n"
+            "安全审查：检测到疑似 SQL 高危操作请求，已拦截处理。\n"
+            f"原因：{reason}"
+        )
+        return {
+            "intent": "",
+            "confidence": 1.0,
+            "slots": self._extract_slots(query),
+            "is_unknown": False,
+            "need_clarify": True,
+            "intent_need_clarify": True,
+            "condition_need_clarify": False,
+            "clarify_conditions": [],
+            "clarify_questions": [safe_question],
+            "refer_clarify": [],
+            "field_clarify": [],
+            "noun_phrases": [],
+            "summary_text": summary_text,
+            "security_review": {
+                "blocked": True,
+                "review_type": "sql_risk",
+                "reason": reason,
+                "risk_keywords": list(SQL_RISK_KEYWORDS),
+            },
+        }
+
     @staticmethod
     def _build_summary_text(
         query: str,
@@ -159,6 +256,8 @@ class IntentRouterTool(LLMTool):
         is_unknown: bool,
         need_clarify: bool,
         clarify_questions: List[str],
+        intent_need_clarify: bool = False,
+        condition_need_clarify: bool = False,
     ) -> str:
         """构造面向用户/调用方的中文总结文本。"""
         q = (query or "").strip()
@@ -168,10 +267,17 @@ class IntentRouterTool(LLMTool):
             parts.append(f"用户问题：{q}")
 
         if need_clarify:
-            if is_unknown:
-                parts.append("意图识别：暂无法确定（未知/不匹配）。")
+            if intent_need_clarify and condition_need_clarify:
+                parts.append("意图识别：意图与关键条件均需进一步澄清。")
+            elif intent_need_clarify:
+                if is_unknown:
+                    parts.append("意图识别：暂无法确定（未知/不匹配），需要进一步澄清。")
+                else:
+                    parts.append("意图识别：存在歧义，需要进一步澄清。")
+            elif condition_need_clarify:
+                parts.append("意图识别：意图已明确，但关键条件缺失，需要补充条件。")
             else:
-                parts.append("意图识别：存在歧义，需要进一步澄清。")
+                parts.append("意图识别：需要进一步澄清。")
         else:
             parts.append(f"意图识别：{intent or '—'}（置信度 {confidence:.4f}）。")
 
@@ -386,6 +492,58 @@ class IntentRouterTool(LLMTool):
             "chose_type": "多选",
         }
 
+    @staticmethod
+    def _normalize_llm_clarify_questions(raw: Any) -> List[str]:
+        """仅保留大模型返回的澄清问题：去空、去重、保序。"""
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            raw = [raw]
+        if not isinstance(raw, list):
+            raw = [raw]
+        out: List[str] = []
+        seen = set()
+        for item in raw:
+            q = str(item or "").strip()
+            if not q or q in seen:
+                continue
+            seen.add(q)
+            out.append(q)
+        return out[:10]
+
+    @staticmethod
+    def _normalize_clarify_conditions(raw: Any) -> List[str]:
+        """规范化缺失条件列表。"""
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            raw = [raw]
+        if not isinstance(raw, list):
+            raw = [raw]
+        out: List[str] = []
+        seen = set()
+        for item in raw:
+            cond = str(item or "").strip()
+            if not cond or cond in seen:
+                continue
+            seen.add(cond)
+            out.append(cond)
+        return out[:10]
+
+    @staticmethod
+    def _infer_missing_conditions_from_slots(slots: Dict[str, Any]) -> List[str]:
+        """当 condition_need_clarify=true 但缺失条件为空时，基于槽位做最小兜底。"""
+        if not isinstance(slots, dict):
+            return []
+        missing: List[str] = []
+        if not str(slots.get("数据对象", "") or "").strip():
+            missing.append("数据对象")
+        if not str(slots.get("时间范围", "") or "").strip():
+            missing.append("时间范围")
+        if not str(slots.get("维度", "") or "").strip():
+            missing.append("统计维度")
+        return missing
+
     @classmethod
     @api_tool_decorator
     async def as_async_api_cls(cls, params: dict):
@@ -460,7 +618,7 @@ class IntentRouterTool(LLMTool):
                                     },
                                     "intents": {
                                         "type": "object",
-                                        "description": "意图配置：{intent_name: {keywords: [...], examples: [...]}}",
+                                        "description": "意图配置：{intent_name: {keywords: [...], examples: [...], notes: ...}}，notes 支持字符串或字符串数组。",
                                     },
                                     "top_k": {"type": "integer", "default": 3, "minimum": 1, "maximum": 10},
                                     "min_confidence": {"type": "number", "default": 0.6, "minimum": 0, "maximum": 1},
@@ -524,6 +682,13 @@ class IntentRouterTool(LLMTool):
                                         "slots": {"type": "object", "description": "抽取槽位"},
                                         "is_unknown": {"type": "boolean", "description": "是否未知意图"},
                                         "need_clarify": {"type": "boolean", "description": "是否需要澄清"},
+                                        "intent_need_clarify": {"type": "boolean", "description": "是否需要意图澄清（意图模糊/不在候选中）"},
+                                        "condition_need_clarify": {"type": "boolean", "description": "是否需要条件澄清（意图明确但关键条件缺失）"},
+                                        "clarify_conditions": {
+                                            "type": "array",
+                                            "items": {"type": "string"},
+                                            "description": "缺失的关键条件列表，例如时间范围、维度、口径等",
+                                        },
                                         "clarify_questions": {
                                             "type": "array",
                                             "items": {"type": "string"},
@@ -564,6 +729,7 @@ class IntentRouterTool(LLMTool):
         query: str,
         candidates: List[Dict[str, Any]],
         slots_hint: Dict[str, str],
+        background: str = "",
     ) -> Dict[str, Any]:
         """
         使用大模型在候选意图中做最终判别，并产出标准输出结构（含 need_clarify/反问/slots）。
@@ -578,6 +744,7 @@ class IntentRouterTool(LLMTool):
                 SystemMessage(content=system_prompt.render()),
                 HumanMessagePromptTemplate.from_template(
                     "用户query：{query}\n\n"
+                    "背景知识（可为空）：\n{background}\n\n"
                     "候选意图列表（按相关性排序）：\n{candidates_json}\n\n"
                     "槽位提示（可参考，可覆盖）：\n{slots_hint_json}\n"
                 ),
@@ -586,6 +753,7 @@ class IntentRouterTool(LLMTool):
 
         messages = prompt.format_messages(
             query=query,
+            background=(background or "").strip(),
             candidates_json=json.dumps(candidates, ensure_ascii=False, indent=2),
             slots_hint_json=json.dumps(slots_hint, ensure_ascii=False, indent=2),
         )
@@ -611,7 +779,41 @@ class IntentRouterTool(LLMTool):
         return (text or "").strip().lower()
 
     @staticmethod
-    def _score_intent(query: str, keywords: List[str], examples: List[str]) -> float:
+    def _get_final_intent(intent_name: str, intent_meta: Dict[str, Any]) -> str:
+        """
+        从意图配置中解析“最终意图”。
+        规则：优先取 route 最后一跳；若未配置 route，则回退到 intent_name。
+        """
+        route = (intent_meta or {}).get("route", [])
+        if isinstance(route, list):
+            for item in reversed(route):
+                final_name = str(item or "").strip()
+                if final_name:
+                    return final_name
+        return str(intent_name or "").strip()
+
+    @classmethod
+    def _merge_ranked_by_final_intent(
+        cls,
+        ranked: List[Tuple[str, float, Dict[str, Any], float]],
+    ) -> List[Tuple[str, float, Dict[str, Any], float]]:
+        """
+        将候选按最终意图归并，避免中间流程意图（如“找表”）覆盖最终意图（如“问数”）。
+        归并策略：同一最终意图取置信度更高者；若置信度相同取规则分更高者。
+        """
+        merged: Dict[str, Tuple[str, float, Dict[str, Any], float]] = {}
+        for name, conf, meta, score in ranked:
+            final_intent = cls._get_final_intent(name, meta)
+            if not final_intent:
+                continue
+            prev = merged.get(final_intent)
+            candidate = (final_intent, conf, meta, score)
+            if prev is None or (conf, score) > (prev[1], prev[3]):
+                merged[final_intent] = candidate
+        return sorted(merged.values(), key=lambda x: (x[1], x[3]), reverse=True)
+
+    @staticmethod
+    def _score_intent(query: str, keywords: List[str], examples: List[str], notes: List[str]) -> float:
         """
         规则打分：
         - keyword 命中（包含）加分
@@ -649,7 +851,35 @@ class IntentRouterTool(LLMTool):
                     common += 1
             score += min(common * 0.15, 0.45)
 
+        # notes 弱特征加分（低于 examples 权重）
+        for note in notes or []:
+            n = IntentRouterTool._normalize_text(note)
+            if not n:
+                continue
+            common = 0
+            for token in re.findall(r"[\u4e00-\u9fff]{2,}|[a-z0-9]{3,}", n):
+                if token and token in q:
+                    common += 1
+            score += min(common * 0.08, 0.24)
+
         return score
+
+    @staticmethod
+    def _normalize_notes(notes: Any) -> List[str]:
+        """兼容 notes 为 str/list 的场景。"""
+        if notes is None:
+            return []
+        if isinstance(notes, str):
+            v = notes.strip()
+            return [v] if v else []
+        if isinstance(notes, list):
+            out: List[str] = []
+            for item in notes:
+                s = str(item or "").strip()
+                if s:
+                    out.append(s)
+            return out
+        return []
 
     @staticmethod
     def _softmax_confidences(scores: List[float]) -> List[float]:
@@ -718,108 +948,11 @@ class IntentRouterTool(LLMTool):
             "操作条件": "",
         }
 
-    @staticmethod
-    def _build_clarify_questions(
-        query: str,
-        top_candidates: List[Tuple[str, float, Dict[str, Any]]],
-        slots: Dict[str, str],
-    ) -> List[str]:
-        # 兼容保留旧方法名，但语义改为：返回可直接使用的“明确问题推荐”
-        return IntentRouterTool._build_rewritten_questions(
-            query=query,
-            top_candidates=top_candidates,
-            slots=slots,
-            is_unknown=False,
-        )
-
-    @staticmethod
-    def _build_rewritten_questions(
-        query: str,
-        top_candidates: List[Tuple[str, float, Dict[str, Any]]],
-        slots: Dict[str, str],
-        is_unknown: bool,
-    ) -> List[str]:
-        """
-        生成“可直接发送的新问题推荐”，避免返回模糊追问。
-        """
-        recs: List[str] = []
-
-        data_object = (slots.get("数据对象") or "").strip() if isinstance(slots, dict) else ""
-        time_range = (slots.get("时间范围") or "").strip() if isinstance(slots, dict) else ""
-        dimension = (slots.get("维度") or "").strip() if isinstance(slots, dict) else ""
-
-        # 先使用候选意图示例，给出可执行的明确问句
-        for name, _conf, meta in (top_candidates or [])[:3]:
-            ex_list = meta.get("examples") or []
-            for ex in ex_list[:2]:
-                ex_text = str(ex or "").strip()
-                if not ex_text:
-                    continue
-                if ex_text not in recs:
-                    recs.append(ex_text)
-                break
-
-            # 如果示例不足，按意图名和槽位拼一个更明确的问句
-            if len(recs) < 3:
-                if "找表" in name:
-                    obj = data_object or "销售额"
-                    t = time_range or "2025年"
-                    rec = f"请帮我找到{t}{obj}相关的数据表名称。"
-                elif "数据查询" in name:
-                    obj = data_object or "销售额"
-                    t = time_range or "2025年Q1"
-                    dim = f"{dimension}地区" if dimension else "北京地区"
-                    rec = f"请查询{t}{dim}{obj}的具体数值。"
-                elif "趋势" in name:
-                    obj = data_object or "用户数"
-                    rec = f"请分析近6个月{obj}的变化趋势。"
-                elif "对比" in name:
-                    obj = data_object or "转化率"
-                    rec = f"请对比北京和上海在{obj}上的差异。"
-                elif "归因" in name:
-                    obj = data_object or "销售额"
-                    rec = f"请分析{obj}下降的主要原因。"
-                elif "预测" in name:
-                    obj = data_object or "销售额"
-                    rec = f"请预测未来3个月{obj}的变化。"
-                elif "核心结论" in name:
-                    rec = "请解读这份数据并给出3条核心结论。"
-                elif "报告编写" in name:
-                    rec = "请基于给定数据生成一份分析报告初稿。"
-                else:
-                    rec = ""
-                if rec and rec not in recs:
-                    recs.append(rec)
-
-        # 未知场景兜底：直接给结构化、无歧义的问题模板
-        if is_unknown or not recs:
-            obj = data_object or "销售额"
-            t = time_range or "2025年Q1"
-            dim = dimension or "北京"
-            recs.extend(
-                [
-                    f"请查询{t}{dim}地区的{obj}是多少。",
-                    f"请帮我找到{obj}相关的数据表，并说明表名与字段。",
-                    f"请对比{t}与上一季度在{obj}上的变化。",
-                ]
-            )
-
-        # 去重保序并限制数量
-        dedup: List[str] = []
-        seen = set()
-        for q in recs:
-            q = str(q or "").strip()
-            if not q or q in seen:
-                continue
-            seen.add(q)
-            dedup.append(q)
-        return dedup[:3]
-
     @construct_final_answer
     def _run(
         self,
         query: str,
-        intents: Dict[str, Dict[str, List[str]]] = None,
+        intents: Dict[str, Dict[str, Any]] = None,
         top_k: int = 3,
         min_confidence: float = 0.6,
         min_margin: float = 0.15,
@@ -846,7 +979,7 @@ class IntentRouterTool(LLMTool):
     async def _arun(
         self,
         query: str,
-        intents: Dict[str, Dict[str, List[str]]] = None,
+        intents: Dict[str, Dict[str, Any]] = None,
         top_k: int = 3,
         min_confidence: float = 0.6,
         min_margin: float = 0.15,
@@ -871,13 +1004,19 @@ class IntentRouterTool(LLMTool):
     def _route_rules(
         self,
         query: str,
-        intents: Dict[str, Dict[str, List[str]]],
+        intents: Dict[str, Dict[str, Any]],
         top_k: int,
         min_confidence: float,
         min_margin: float,
         report_intents: bool,
         enable_field_clarify: bool = True,
     ) -> Dict[str, Any]:
+        if self._contains_sql_risk_tokens(query):
+            return self._build_sql_risk_block_result(
+                query=query,
+                reason="命中 SQL 高危操作关键词（规则审查）。",
+            )
+
         # 1) 打分
         intent_names = list(intents.keys())
         scores: List[float] = []
@@ -886,15 +1025,16 @@ class IntentRouterTool(LLMTool):
             meta = intents.get(name) or {}
             keywords = meta.get("keywords") or []
             examples = meta.get("examples") or []
-            s = self._score_intent(query, keywords, examples)
+            notes = self._normalize_notes(meta.get("notes"))
+            s = self._score_intent(query, keywords, examples, notes)
             scores.append(s)
-            metas.append({"keywords": keywords, "examples": examples})
+            metas.append({"keywords": keywords, "examples": examples, "notes": notes, "route": meta.get("route", [])})
 
         # 2) 置信度
         confidences = self._softmax_confidences(scores) if scores else []
 
         # 3) 候选排序
-        ranked = sorted(
+        ranked_raw = sorted(
             [
                 (intent_names[i], confidences[i] if i < len(confidences) else 0.0, metas[i], scores[i])
                 for i in range(len(intent_names))
@@ -902,6 +1042,7 @@ class IntentRouterTool(LLMTool):
             key=lambda x: (x[1], x[3]),
             reverse=True,
         )
+        ranked = self._merge_ranked_by_final_intent(ranked_raw)
 
         candidates = [
             {
@@ -910,6 +1051,7 @@ class IntentRouterTool(LLMTool):
                 "score": round(score, 4),
                 "keywords": meta.get("keywords", []),
                 "examples": meta.get("examples", []),
+                "notes": meta.get("notes", []),
             }
             for (name, conf, meta, score) in ranked[: max(1, top_k)]
         ]
@@ -926,23 +1068,12 @@ class IntentRouterTool(LLMTool):
 
         if is_unknown:
             need_clarify = True
-            top_for_clarify = [(n, c, m) for (n, c, m, _s) in ranked[:2]]
-            clarify_questions = self._build_rewritten_questions(
-                query=query,
-                top_candidates=top_for_clarify,
-                slots=slots,
-                is_unknown=True,
-            )
+            # 澄清问题仅由大模型产出；规则路径不生成模板澄清句
+            clarify_questions = []
         else:
             if best_conf < min_confidence or (best_conf - second_conf) < min_margin:
                 need_clarify = True
-                top_for_clarify = [(n, c, m) for (n, c, m, _s) in ranked[:2]]
-                clarify_questions = self._build_rewritten_questions(
-                    query=query,
-                    top_candidates=top_for_clarify,
-                    slots=slots,
-                    is_unknown=False,
-                )
+                clarify_questions = []
 
         # 5) module_result：仅用于日志，不返回给调用方
         module_result: Dict[str, Any] = {
@@ -965,6 +1096,9 @@ class IntentRouterTool(LLMTool):
             "slots": slots,
             "is_unknown": bool(is_unknown),
             "need_clarify": bool(need_clarify),
+            "intent_need_clarify": bool(need_clarify),
+            "condition_need_clarify": False,
+            "clarify_conditions": [],
             "clarify_questions": clarify_questions,
             # "intent_clarify": self._build_intent_clarify(candidates) if need_clarify else {},
             "refer_clarify": [],
@@ -978,13 +1112,15 @@ class IntentRouterTool(LLMTool):
                 is_unknown=bool(is_unknown),
                 need_clarify=bool(need_clarify),
                 clarify_questions=clarify_questions,
+                intent_need_clarify=bool(need_clarify),
+                condition_need_clarify=False,
             ),
         }
 
     def _route_embedding(
         self,
             query: str,
-            intents: Dict[str, Dict[str, List[str]]],
+            intents: Dict[str, Dict[str, Any]],
     ) -> Optional[Dict[str, Any]]:
         """
         向量匹配路由：如果匹配度非常高（>0.99），返回匹配结果
@@ -1011,10 +1147,12 @@ class IntentRouterTool(LLMTool):
                 if highest_score > best_score:
                     best_score = highest_score
                     best_match = {
-                        "intent": intent_name,
+                        "intent": self._get_final_intent(intent_name, intent_meta),
                         "score": highest_score,
                         "keywords": intent_meta.get("keywords", []),
                         "examples": intent_meta.get("examples", []),
+                        "notes": self._normalize_notes(intent_meta.get("notes")),
+                        "route": intent_meta.get("route", []),
                     }
 
             # 如果向量匹配度非常高（>0.99），返回匹配结果
@@ -1029,7 +1167,7 @@ class IntentRouterTool(LLMTool):
     async def _route_async(
         self,
         query: str,
-        intents: Dict[str, Dict[str, List[str]]],
+        intents: Dict[str, Dict[str, Any]],
         top_k: int,
         min_confidence: float,
         min_margin: float,
@@ -1042,6 +1180,14 @@ class IntentRouterTool(LLMTool):
         2. 如果规则匹配非常明确（置信度高且不需要澄清），直接返回规则结果，不使用LLM
         3. 如果出现模糊意图（need_clarify=True）且配置了LLM，自动使用LLM生成反问信息
         """
+        if self._contains_sql_risk_tokens(query):
+            review = await self._llm_sql_risk_review(query)
+            if bool(review.get("blocked", False)):
+                return self._build_sql_risk_block_result(
+                    query=query,
+                    reason=str(review.get("reason", "") or "命中 SQL 高危操作，已拦截。"),
+                )
+
         # 1. 先尝试向量匹配
         embedding_res = self._route_embedding(
             query=query,
@@ -1058,6 +1204,7 @@ class IntentRouterTool(LLMTool):
                     "score": round(embedding_res["score"], 4),
                     "keywords": embedding_res.get("keywords", []),
                     "examples": embedding_res.get("examples", []),
+                    "notes": embedding_res.get("notes", []),
                 }],
                 "embedding_match": True,
             }
@@ -1078,6 +1225,9 @@ class IntentRouterTool(LLMTool):
                 "slots": slots,
                 "is_unknown": False,
                 "need_clarify": False,
+                "intent_need_clarify": False,
+                "condition_need_clarify": False,
+                "clarify_conditions": [],
                 "clarify_questions": [],
                 "intent_clarify": {},
                 "refer_clarify": [],
@@ -1091,6 +1241,8 @@ class IntentRouterTool(LLMTool):
                     is_unknown=False,
                     need_clarify=False,
                     clarify_questions=[],
+                    intent_need_clarify=False,
+                    condition_need_clarify=False,
                 ),
             }
 
@@ -1113,12 +1265,13 @@ class IntentRouterTool(LLMTool):
             meta = intents.get(name) or {}
             keywords = meta.get("keywords") or []
             examples = meta.get("examples") or []
-            s = self._score_intent(query, keywords, examples)
+            notes = self._normalize_notes(meta.get("notes"))
+            s = self._score_intent(query, keywords, examples, notes)
             scores.append(s)
-            metas.append({"keywords": keywords, "examples": examples})
+            metas.append({"keywords": keywords, "examples": examples, "notes": notes, "route": meta.get("route", [])})
 
         confidences = self._softmax_confidences(scores) if scores else []
-        ranked = sorted(
+        ranked_raw = sorted(
             [
                 (intent_names[i], confidences[i] if i < len(confidences) else 0.0, metas[i], scores[i])
                 for i in range(len(intent_names))
@@ -1126,6 +1279,7 @@ class IntentRouterTool(LLMTool):
             key=lambda x: (x[1], x[3]),
             reverse=True,
         )
+        ranked = self._merge_ranked_by_final_intent(ranked_raw)
         candidates = [
             {
                 "intent": name,
@@ -1133,6 +1287,7 @@ class IntentRouterTool(LLMTool):
                 "score": round(score, 4),
                 "keywords": meta.get("keywords", []),
                 "examples": meta.get("examples", []),
+                "notes": meta.get("notes", []),
             }
             for (name, conf, meta, score) in ranked[: max(1, top_k)]
         ]
@@ -1177,6 +1332,7 @@ class IntentRouterTool(LLMTool):
                     query=query,
                     candidates=candidates,
                     slots_hint=slots_hint,
+                    background=self.background or "",
                 )
 
                 module_result: Dict[str, Any] = {
@@ -1201,37 +1357,43 @@ class IntentRouterTool(LLMTool):
                 out_slots = llm_out.get("slots") if isinstance(llm_out.get("slots"), dict) else slots_hint
                 is_unknown = bool(llm_out.get("is_unknown", False))
                 need_clarify = bool(llm_out.get("need_clarify", False))
+                intent_need_clarify = bool(llm_out.get("intent_need_clarify", False))
+                condition_need_clarify = bool(llm_out.get("condition_need_clarify", False))
+                clarify_conditions = self._normalize_clarify_conditions(llm_out.get("clarify_conditions", []))
                 clarify_questions = llm_out.get("clarify_questions", []) or []
                 refer_clarify = self._normalize_refer_clarify(llm_out.get("refer_clarify"))
                 field_clarify = self._normalize_field_clarify(llm_out.get("field_clarify"))
                 if not isinstance(clarify_questions, list):
                     clarify_questions = [str(clarify_questions)]
+                clarify_questions = self._normalize_llm_clarify_questions(clarify_questions)
+
+                # 约束：intent 必须来自候选意图
+                candidate_intents = {str(c.get("intent", "")).strip() for c in candidates if isinstance(c, dict)}
+                if intent and intent not in candidate_intents:
+                    intent = ""
+                    need_clarify = True
+                    intent_need_clarify = True
+                    condition_need_clarify = False
+
+                # 若显式声明某类澄清，则 need_clarify 必须为 true
+                if intent_need_clarify or condition_need_clarify:
+                    need_clarify = True
+
+                # need_clarify 为 true 但分类未给出时，按语义补齐分类
+                if need_clarify and not intent_need_clarify and not condition_need_clarify:
+                    if not intent or is_unknown:
+                        intent_need_clarify = True
+                    elif clarify_conditions:
+                        condition_need_clarify = True
+                    else:
+                        intent_need_clarify = True
+
+                # 条件澄清应带缺失条件列表；若未给出，按 slots 兜底推断
+                if condition_need_clarify and not clarify_conditions:
+                    clarify_conditions = self._infer_missing_conditions_from_slots(out_slots if isinstance(out_slots, dict) else slots_hint)
+
                 noun_phrases: List[str] = []
                 if need_clarify:
-                    # 统一将澄清问题规范为“明确问题推荐”，避免模糊追问。
-                    top_for_clarify = [(n, c.get("confidence", 0.0), c) for (n, c) in [(x.get("intent", ""), x) for x in candidates[:2]]]
-                    # top_for_clarify 需要 meta 中包含 examples
-                    top_for_clarify = [
-                        (
-                            str(item.get("intent", "")),
-                            float(item.get("confidence", 0.0) or 0.0),
-                            {
-                                "examples": item.get("examples", []) or [],
-                                "keywords": item.get("keywords", []) or [],
-                            },
-                        )
-                        for item in candidates[:2]
-                    ]
-                    fallback_questions = self._build_rewritten_questions(
-                        query=query,
-                        top_candidates=top_for_clarify,
-                        slots=out_slots if isinstance(out_slots, dict) else slots_hint,
-                        is_unknown=bool(is_unknown),
-                    )
-                    # 优先使用 LLM 返回的非空条目；不足时用规则推荐补齐到 3 条
-                    cleaned = [str(q).strip() for q in clarify_questions if str(q).strip()]
-                    merged = cleaned + [q for q in fallback_questions if q not in cleaned]
-                    clarify_questions = merged[:3]
                     field_clarify = []
                     if enable_field_clarify:
                         noun_phrases = await self._llm_extract_nouns(query)
@@ -1291,14 +1453,11 @@ class IntentRouterTool(LLMTool):
 
 
 
-
-                # if enable_field_clarify and not field_clarify:
-                #     field_clarify = self._build_field_clarify(query)
                 if not enable_field_clarify:
                     field_clarify = []
 
                 return {
-                    "intent": "" if need_clarify else intent,
+                    "intent": "" if intent_need_clarify else intent,
                     "confidence": round(max(0.0, min(1.0, confidence)), 4),
                     "slots": {
                         "数据对象": str(out_slots.get("数据对象", "")) if isinstance(out_slots, dict) else "",
@@ -1308,6 +1467,9 @@ class IntentRouterTool(LLMTool):
                     },
                     "is_unknown": is_unknown,
                     "need_clarify": need_clarify,
+                    "intent_need_clarify": bool(intent_need_clarify),
+                    "condition_need_clarify": bool(condition_need_clarify),
+                    "clarify_conditions": clarify_conditions,
                     "clarify_questions": clarify_questions,
                     # "intent_clarify": self._build_intent_clarify(candidates) if need_clarify else {},
                     "refer_clarify": refer_clarify,
@@ -1315,7 +1477,7 @@ class IntentRouterTool(LLMTool):
                     "noun_phrases": noun_phrases,
                     "summary_text": self._build_summary_text(
                         query=query,
-                        intent=("" if need_clarify else intent),
+                        intent=("" if intent_need_clarify else intent),
                         confidence=float(max(0.0, min(1.0, confidence))),
                         slots={
                             "数据对象": str(out_slots.get("数据对象", "")) if isinstance(out_slots, dict) else "",
@@ -1326,6 +1488,8 @@ class IntentRouterTool(LLMTool):
                         is_unknown=bool(is_unknown),
                         need_clarify=bool(need_clarify),
                         clarify_questions=clarify_questions,
+                        intent_need_clarify=bool(intent_need_clarify),
+                        condition_need_clarify=bool(condition_need_clarify),
                     ),
                 }
             except Exception as e:
@@ -1350,11 +1514,19 @@ class IntentRouterTool(LLMTool):
                 is_unknown=bool(rule_res.get("is_unknown", False)),
                 need_clarify=bool(rule_res.get("need_clarify", False)),
                 clarify_questions=rule_res.get("clarify_questions", []) or [],
+                intent_need_clarify=bool(rule_res.get("intent_need_clarify", False)),
+                condition_need_clarify=bool(rule_res.get("condition_need_clarify", False)),
             )
         if "refer_clarify" not in rule_res:
             rule_res["refer_clarify"] = []
         if "field_clarify" not in rule_res:
             rule_res["field_clarify"] = self._build_field_clarify(query) if enable_field_clarify else []
+        if "intent_need_clarify" not in rule_res:
+            rule_res["intent_need_clarify"] = bool(rule_res.get("need_clarify", False))
+        if "condition_need_clarify" not in rule_res:
+            rule_res["condition_need_clarify"] = False
+        if "clarify_conditions" not in rule_res:
+            rule_res["clarify_conditions"] = []
         # if "intent_clarify" not in rule_res:
             # rule_res["intent_clarify"] = self._build_intent_clarify(candidates) if bool(rule_res.get("need_clarify", False)) else {}
         if "noun_phrases" not in rule_res:

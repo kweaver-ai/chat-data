@@ -11,6 +11,8 @@ class ModelType4Prompt(Enum):
     GPT4O = "gpt-4o"
     LANGCHAIN = "langchain"
     DEEPSEEK_R1 = "deepseek-r1"
+    # DeepSeek V3.2 系列（含 -vol 等部署后缀）：强约束、精简 prompt
+    DEEPSEEK_V32 = "deepseek-v3.2"
     DEFAULT = "default"
 
     @classmethod
@@ -32,6 +34,10 @@ def get_standard_model_type(model_type: str):
         model_type = ModelType4Prompt.DEFAULT.value
     else:
         model_type = model_type.lower()
+
+    # 将 DeepSeek V3.2 系列部署名统一为 canonical，便于选择专用 prompt
+    if model_type.startswith("deepseek-v3.2") or model_type.startswith("deepseek-v3-2"):
+        model_type = ModelType4Prompt.DEEPSEEK_V32.value
 
     if model_type not in ModelType4Prompt.values():
         logger.warning(f"model_type: {model_type} not found, use default model_type: {ModelType4Prompt.DEFAULT.value}")

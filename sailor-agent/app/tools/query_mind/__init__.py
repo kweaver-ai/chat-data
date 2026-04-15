@@ -5,6 +5,7 @@ from .json2plot import Json2PlotTool
 from .get_metadata import GetMetadataTool
 from .knowledge_item import KnowledgeItemTool
 from .sql_helper import SQLHelperTool
+from .metric_search_tool import MetricSearchTool
 
 
 __all__ = [
@@ -12,6 +13,7 @@ __all__ = [
     "Text2MetricTool",
     "Json2PlotTool",
     "GetMetadataTool",
+    "MetricSearchTool",
     "KnowledgeItemTool",
     "SQLHelperTool"
 ]

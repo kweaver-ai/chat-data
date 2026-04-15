@@ -122,7 +122,7 @@ class MemoryWriteTool:
                     continue
 
                 if _is_null_string(item.get("text")) or _is_null_string(
-                    item.get("title")
+                        item.get("title")
                 ):
                     raw_id = str(item.get("id") or "").strip()
                     if raw_id:

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import copy
 from textwrap import dedent
-from typing import Optional, Type, Any, List, Dict
+from typing import Optional, Type, Any, List, Dict, Tuple
 from app.errors import ToolFatalError
 from app.parsers.base import BaseJsonParser
 from app.session import BaseChatHistorySession, CreateSession
@@ -48,8 +49,6 @@ class SemanticCompleteTool(LLMTool):
 
     args_schema: Type[BaseModel] = ArgsModel
     with_sample: bool = False
-    data_source_num_limit: int = -1
-    dimension_num_limit: int = -1
     session_type: str = "redis"
     session: Optional[BaseChatHistorySession] = None
 
@@ -198,6 +197,62 @@ class SemanticCompleteTool(LLMTool):
             transformed_list.append(transformed_item)
         
         return transformed_list
+
+    @staticmethod
+    def _compress_field_ids_in_views(views: List[Dict]) -> Tuple[List[Dict], Dict[str, str]]:
+        """
+        压缩输入视图中的 field_id，减少 prompt 长度。
+
+        Args:
+            views: 原始视图数据
+
+        Returns:
+            (压缩后的视图数据, 压缩ID->原始ID映射)
+        """
+        compact_views = copy.deepcopy(views)
+        compact_to_original_field_id_map: Dict[str, str] = {}
+        original_to_compact_field_id_map: Dict[str, str] = {}
+        next_compact_id = 1
+
+        for view in compact_views:
+            for field in view.get("fields", []):
+                original_field_id = field.get("field_id", "")
+                if not original_field_id:
+                    continue
+                original_field_id = str(original_field_id)
+                compact_field_id = original_to_compact_field_id_map.get(original_field_id)
+                if compact_field_id is None:
+                    compact_field_id = str(next_compact_id)
+                    next_compact_id += 1
+                    original_to_compact_field_id_map[original_field_id] = compact_field_id
+                    compact_to_original_field_id_map[compact_field_id] = original_field_id
+                field["field_id"] = compact_field_id
+
+        return compact_views, compact_to_original_field_id_map
+
+    @staticmethod
+    def _restore_field_ids_with_map(result: Any, compact_to_original_field_id_map: Dict[str, str]) -> Any:
+        """
+        使用映射将模型输出中的压缩 field_id 还原为原始值。
+        """
+        if not compact_to_original_field_id_map:
+            return result
+
+        def _restore_node(node: Any):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    if key == "field_id" and value is not None:
+                        restored_value = compact_to_original_field_id_map.get(str(value))
+                        if restored_value is not None:
+                            node[key] = restored_value
+                    else:
+                        _restore_node(value)
+            elif isinstance(node, list):
+                for item in node:
+                    _restore_node(item)
+
+        _restore_node(result)
+        return result
 
     @staticmethod
     def _transform_to_new_format(views: List[Dict]) -> List[Dict]:
@@ -506,7 +561,8 @@ class SemanticCompleteTool(LLMTool):
         system_prompt = SemanticCompletePrompt(
             input_data=input_data,
             language=self.language,
-            background=self.background
+            background=self.background,
+            model_type=self.model_type,
         )
 
         logger.debug(f"{ToolName} -> model_type: {self.model_type}")
@@ -531,7 +587,7 @@ class SemanticCompleteTool(LLMTool):
                     HumanMessagePromptTemplate.from_template("{input}")
                 ]
             )
-
+        logger.info("semantic complete prompt length {}".format(len(prompt.messages[0].content)))
         chain = (
             prompt
             | self.llm
@@ -563,7 +619,10 @@ class SemanticCompleteTool(LLMTool):
             run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ):
         data_source_list = []
+        llm_input_data_source_list = []
+        compact_to_original_field_id_map: Dict[str, str] = {}
         sample_data_list = []
+        metadata_error_reason = ""
 
         if len(data_view_list) > 0:
 
@@ -587,24 +646,42 @@ class SemanticCompleteTool(LLMTool):
                 
                 # 转换数据格式
                 data_source_list = self._transform_input_data(raw_data_source_list)
+                llm_input_data_source_list, compact_to_original_field_id_map = self._compress_field_ids_in_views(data_source_list)
 
             except Exception as e:
-                logger.error(f"获取数据视图元数据失败: {e}")
+                metadata_error_reason = str(e)
+                logger.error(f"获取数据视图元数据失败: {metadata_error_reason}")
+                # 元数据拉取失败时直接返回，避免继续触发语义补全链路
+                return {
+                    "result": [],
+                    "summary_text": "未获取到语义补全结果。",
+                    "result_cache_key": self._result_cache_key,
+                    "metadata_error_reason": metadata_error_reason
+                }
+
+        if not llm_input_data_source_list:
+            llm_input_data_source_list = data_source_list
+
+        logger.info("data_source_list data length {}".format(len("{}".format(data_source_list))))
+        logger.info("llm_input_data_source_list data length {}".format(len("{}".format(llm_input_data_source_list))))
 
         chain = self._config_chain(
-            input_data=data_source_list,
+            input_data=llm_input_data_source_list,
             input_sample=sample_data_list
         )
         result = []
         try:
             result = await chain.ainvoke({"input": query})
-            
+
+            # 将压缩ID映射回原始ID，保证对外结果兼容
+            result = self._restore_field_ids_with_map(result, compact_to_original_field_id_map)
+
             # 补充未补全的字段（从输入中提取，不在fields_need_completion中的字段）
             result = self._add_accurate_fields(result, data_source_list)
 
         except Exception as e:
-            logger.error(f"获取数据资源失败: {str(e)}")
-            raise ToolFatalError(f"获取数据资源失败: {str(e)}")
+            logger.error(f"语义补全失败: {str(e)}")
+            raise ToolFatalError(f"语义补全失败: {str(e)}")
 
         # 生成总结文字
         summary_text = self._generate_summary(result)
@@ -612,7 +689,8 @@ class SemanticCompleteTool(LLMTool):
         return {
             "result": result,
             "summary_text": summary_text,
-            "result_cache_key": self._result_cache_key
+            "result_cache_key": self._result_cache_key,
+            "metadata_error_reason": metadata_error_reason
         }
 
 
@@ -637,10 +715,10 @@ class SemanticCompleteTool(LLMTool):
             llm_dict["max_tokens"] = llm_out_dict.get("max_tokens")
         else:
             llm_dict["max_tokens"] = 20000
+        llm_dict["temperature"] = 0
 
         logger.info("llm dict: {}".format(llm_dict))
         llm = CustomChatOpenAI(**llm_dict)
-
 
         auth_dict = params.get("auth", {})
         token = auth_dict.get("token", "")
@@ -669,11 +747,10 @@ class SemanticCompleteTool(LLMTool):
             session=session,
             # session_type=config_dict.get("session_type", "redis"),
             # session_id=config_dict.get("session_id", ""),
-            data_source_num_limit=config_dict.get("data_source_num_limit", -1),
-            dimension_num_limit=config_dict.get("dimension_num_limit", -1),
             with_sample=config_dict.get("with_sample", False),
             knowledge_item_ids=data_item_ids,
             data_model=data_model,
+            model_type=llm_dict["model_name"]
         )
 
         query = params.get("query", "")
@@ -716,8 +793,6 @@ class SemanticCompleteTool(LLMTool):
             user_id=auth_dict.get("user_id", ""),
             background=config_dict.get("background", ""),
             session=session,
-            data_source_num_limit=config_dict.get("data_source_num_limit", -1),
-            dimension_num_limit=config_dict.get("dimension_num_limit", -1),
             with_sample=config_dict.get("with_sample", False),
         )
 
@@ -729,11 +804,17 @@ class SemanticCompleteTool(LLMTool):
 
         # 将各种格式转换为新格式（view_id, view_tech_name等）
         transformed_views = tool._transform_to_new_format(views)
-        
-        # 使用转换后的视图数据
-        chain = tool._config_chain(input_data=transformed_views)
+
+        # 压缩field_id后再输入模型，减少prompt长度
+        llm_input_views, compact_to_original_field_id_map = tool._compress_field_ids_in_views(transformed_views)
+
+        # 使用压缩后的视图数据
+        chain = tool._config_chain(input_data=llm_input_views)
         result = await chain.ainvoke({"input": query})
-        
+
+        # 将压缩ID映射回原始ID，保证对外结果兼容
+        result = tool._restore_field_ids_with_map(result, compact_to_original_field_id_map)
+
         # 补充未补全的字段（从输入中提取，不在fields_need_completion中的字段）
         result = tool._add_accurate_fields(result, transformed_views)
         
@@ -782,14 +863,6 @@ class SemanticCompleteTool(LLMTool):
                                             "background": {
                                                 "type": "string",
                                                 "description": "背景上下文信息"
-                                            },
-                                            "data_source_num_limit": {
-                                                "type": "integer",
-                                                "description": "数据源数量限制，默认-1（无限制）"
-                                            },
-                                            "dimension_num_limit": {
-                                                "type": "integer",
-                                                "description": "维度数量限制，默认-1（无限制）"
                                             },
                                             "with_sample": {
                                                 "type": "boolean",

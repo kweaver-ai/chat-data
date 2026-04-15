@@ -69,7 +69,7 @@ def get_view_schema_of_table(source: dict, column: dict, zh_table, comment) -> d
         middle += "{column_en} {column_type} comment '{column_cn}'\n"
         middle = middle.format(
             column_en=entry["original_name"],
-            column_cn=entry["comment"],
+            column_cn=entry["comment"] if "comment" in entry else entry["display_name"],
             column_type=entry["type"],
         )
     schema = CREATE_SCHEMA_TEMPLATE.format(

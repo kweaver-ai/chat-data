@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     # Kafka 配置
     KAFKA_BOOTSTRAP_SERVERS: str = os.getenv("KAFKA_URI", "kafka-headless.resource:9097")
     KAFKA_DATA_UNDERSTAND_RESULT_TOPIC: str = os.getenv("KAFKA_DATA_UNDERSTAND_RESULT_TOPIC", "data-understanding-responses")
+    KAFKA_USER: str = os.getenv("KAFKA_USERNAME", "kafkauser")
     KAFKA_PASSWORD: str = os.getenv("KAFKA_PASSWORD", "")
 
 
@@ -74,8 +75,8 @@ class Settings(BaseSettings):
     VIR_ENGINE_URL: str = "http://vega-gateway:8099"
     INDICATOR_MANAGEMENT_URL: str = "http://indicator-management:8213"
     AUTH_SERVICE_URL: str = "http://auth-service:8155"
-    CATALOG_URL: str =  os.getenv("AF_CATALOG_URL", "http://data-catalog:8153")
-    DATA_MODEL_URL:str = os.getenv("DATA_MODEL_URL", "http://mdl-data-model-svc:13020")
+    CATALOG_URL: str = os.getenv("AF_CATALOG_URL", "http://data-catalog:8153")
+    DATA_MODEL_URL: str = os.getenv("DATA_MODEL_URL", "http://mdl-data-model-svc:13020")
 
     # Agent Session Settings
     AGENT_SESSION_TYPE: str = "redis"

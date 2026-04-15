@@ -4,7 +4,15 @@ from .search_tools import (AfSailorTool, DataSourceFilterTool, DataSourceFilterT
 from .data_understand_tools import (BusinessObjectIdentificationTool, DataClassificationDetectTool
 , ExploreRuleIdentificationTool, SemanticCompleteTool, SensitiveDataDetectTool)
 
-from .query_mind import Text2SQLTool, Text2MetricTool, Json2PlotTool, GetMetadataTool, KnowledgeItemTool, SQLHelperTool
+from .query_mind import (
+    Text2SQLTool,
+    Text2MetricTool,
+    Json2PlotTool,
+    GetMetadataTool,
+    MetricSearchTool,
+    KnowledgeItemTool,
+    SQLHelperTool,
+)
 from .sandbox_tools.toolkit import ExecuteCodeTool, CreateFileTool, ReadFileTool, ListFilesTool
 from .basic_tools import IntentRouterTool
 from .memory_tools import MemorySearchTool, MemoryWriteTool
@@ -27,6 +35,7 @@ _TOOLS_MAPPING = {
     "sensitive_data_detect": SensitiveDataDetectTool,
     "text2sql": Text2SQLTool,
     "text2metric": Text2MetricTool,
+    "metric_search": MetricSearchTool,
     "json2plot": Json2PlotTool,
     "get_metadata": GetMetadataTool,
     "knowledge_item": KnowledgeItemTool,

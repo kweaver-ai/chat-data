@@ -4,3 +4,9 @@
 # @Email : jack.li@aishu.cn
 # @File : __init__.py.py
 # @Project : copilot
+
+from app.utils.lightweight_search_engine import LightweightSearchEngine
+
+__all__ = [
+    "LightweightSearchEngine",
+]
