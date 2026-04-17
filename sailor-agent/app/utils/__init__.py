@@ -5,7 +5,7 @@
 # @File : __init__.py.py
 # @Project : copilot
 
-from app.utils.lightweight_search_engine import LightweightSearchEngine
+from app.utils.lightweight import LightweightSearchEngine
 
 __all__ = [
     "LightweightSearchEngine",
