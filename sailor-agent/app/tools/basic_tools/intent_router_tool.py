@@ -35,53 +35,62 @@ from app.service.adp_service import ADPService
 
 DEFAULT_INTENTS: Dict[str, Dict[str, Any]] = {
     "找数/问数_找表": {
+        "description": "定位满足查询需求的数据表/字段/部门信息，不直接返回最终数据结果。",
         "keywords": ["找表", "数据表", "表名", "数据表格", "字段", "部门"],
         "examples": ["帮我找2025年销售数据表", "用户留存率的表叫什么", "包含姓名字段的表有几张", "根据相关职责查询部门", "主责部门查询",
                      "应该由什么部门负责财务"],
-        "route": ["找数/问数_找表"],
+        "route": ["找表"],
         "notes": "找表不需要条件澄清"
     },
     "找数/问数_数据查询": {
-        "keywords": ["查询", "查一下", "是多少", "数据值", "筛选","过滤","排除","大于","小于","等于"],
-        "examples": ["查询2025年Q1销售额", "北京地区用户数是多少", "筛选出客单价大于1000的订单", "查找包含企业注册资本金信息的数据表，并查询注册资本金数值排名前10%的企业名称"],
-        "route": ["找数/问数_找表", "找数/问数_数据查询"],
-        "notes": ""
+        "description": "用户目标是直接获取数据结果，通常会提出“查什么数据、在什么条件下查、时间范围/维度/过滤口径”等查询诉求。该意图关注的是返回具体数值、明细或统计结果，而不是仅定位库表。",
+        "keywords": ["查询", "查一下", "是多少", "数据值", "筛选", "过滤", "排除", "大于","小于","等于", "请问"],
+        "examples": ["查询2025年Q1销售额", "筛选出客单价大于1000的订单", "查找包含企业注册资本金信息的数据表，并查询注册资本金数值排名前10%的企业名称",
+                     "找表，再查表", "基于某个库表，获取信息"],
+        "route": ["先找表，然后数据查询", "基于某个表，进行提问"],
+        "notes": "数据查询的流程中包含了找表，如果问句中包含了找表，但是最后还是查表，那么意图就是查表。"
     },
     "数据分析_趋势": {
-        "keywords": ["趋势","变化","走势","月度变化"],
+        "description": "分析指标随时间变化的趋势、走势和变化规律。",
+        "keywords": ["趋势", "变化", "走势", "月度变化"],
         "examples": ["分析近6个月的用户增长趋势", "销售额的月度变化趋势是什么"],
-        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据分析_趋势"],
+        "route": ["先找表，然后进行数据查询，最后进行趋势分析"],
         "notes": ""
     },
     "数据分析_对比": {
+        "description": "比较不同对象在同一指标上的差异（如地区、时间、渠道）。",
         "keywords": ["对比", "比较", "和...比", "差异"],
         "examples": ["对比北京和上海的转化率", "2024和2025年的复购率对比"],
-        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据分析_对比"],
+        "route": ["先找表，然后进行数据查询，最后进行对比分析"],
         "notes": ""
     },
     "数据分析_归因": {
+        "description": "解释结果变化原因，识别关键驱动因素或异常来源。",
         "keywords": ["原因", "归因", "为什么", "分析...原因"],
         "examples": ["分析销售额下降的原因", "为什么Q2的用户留存率降"],
-        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据分析_归因"],
+        "route": ["先找表，然后进行数据查询，最后进行归因分析"],
         "notes": ""
     },
     "数据分析_预测": {
+        "description": "基于历史数据对未来趋势或结果进行预测与预估。",
         "keywords": ["预测", "预估", "预计", "推算"],
         "examples": ["筛选出客单价大于1000的订单", "排除2024年的数据"],
-        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据分析_预测"],
+        "route": ["先找表，然后进行数据查询，最后进行预测分析"],
         "notes": ""
     },
     "数据解读_核心结论": {
+        "description": "对数据结果进行解读，提炼核心结论、亮点与业务洞察。",
         "keywords": ["解读", "结论", "总结", "亮点"],
         "examples": ["解读一下这份用户行为数据的核心结论", "总结下Q2的运营数据亮点"],
-        "route": ["找数/问数_找表", "找数/问数_数据查询", "数据解读_核心结论"],
+        "route": ["先找表，然后进行数据查询，最后进行总结、解读"],
         "notes": ""
     },
     "报告编写": {
-        "keywords": ["报告", "初稿", "写一份", "生成报告"],
-        "examples": ["基于Q2销售数据生成分析报告初稿", "写一份用户增长数据的周报"],
-        "route": ["找数/问数_找表", "找数/问数_数据查询", "报告编写"],
-        "notes": ""
+        "description": "生成结构化报告内容（如分析报告初稿、周报、专题报告）。",
+        "keywords": ["报告", "初稿", "生成报告"],
+        "examples": ["生成分析报告初稿", "写一份用户增长数据的周报"],
+        "route": ["先找表，然后进行数据查询，最后进行报告编写"],
+        "notes": "除非问题中非常明确要写报告，不然不要选择报告编写"
     }
 }
 
@@ -106,7 +115,7 @@ class IntentRouterArgs(BaseModel):
     intents: Dict[str, Dict[str, Any]] = Field(
         default_factory=lambda: DEFAULT_INTENTS,
         description=(
-            "意图配置，形如：{intent_name: {keywords: [...], examples: [...], notes: ...}}。"
+            "意图配置，形如：{intent_name: {description: '...', keywords: [...], examples: [...], notes: ...}}。"
             "keywords/examples 为字符串列表，notes 支持字符串或字符串列表。"
         ),
     )
@@ -133,7 +142,7 @@ class IntentRouterArgs(BaseModel):
     )
 
     enable_field_clarify: bool = Field(
-        default=True,
+        default=False,
         description="是否启用字段消歧（识别 query 中可能歧义的名词并返回候选含义）。",
     )
 
@@ -559,7 +568,7 @@ class IntentRouterTool(LLMTool):
           "min_confidence": 0.6,      # 可选
           "min_margin": 0.15,         # 可选
           "report_intents": false,     # 可选
-          "enable_field_clarify": true, # 可选
+          "enable_field_clarify": false, # 可选
           "kn_id": "idrm_metadata_knowledge_network_lbb",                 # 可选，知识网络ID，默认 duty
           "llm": {},
           "auth": {
@@ -573,7 +582,7 @@ class IntentRouterTool(LLMTool):
             "model_name": getattr(_SETTINGS, "TOOL_LLM_MODEL_NAME", ""),
             "openai_api_key": getattr(_SETTINGS, "TOOL_LLM_OPENAI_API_KEY", ""),
             "openai_api_base": getattr(_SETTINGS, "TOOL_LLM_OPENAI_API_BASE", ""),
-            "max_tokens": 8000,
+            "max_tokens": 6000,
             "temperature": 0.1,
         }
         llm_out_dict = params.get("llm", {}) or {}
@@ -593,7 +602,7 @@ class IntentRouterTool(LLMTool):
             "min_confidence": params.get("min_confidence", 0.6),
             "min_margin": params.get("min_margin", 0.15),
             "report_intents": params.get("report_intents", False),
-            "enable_field_clarify": params.get("enable_field_clarify", True),
+            "enable_field_clarify": params.get("enable_field_clarify", False),
         }
         res = await tool.ainvoke(input=tool_params)
         return res
@@ -618,7 +627,7 @@ class IntentRouterTool(LLMTool):
                                     },
                                     "intents": {
                                         "type": "object",
-                                        "description": "意图配置：{intent_name: {keywords: [...], examples: [...], notes: ...}}，notes 支持字符串或字符串数组。",
+                                        "description": "意图配置：{intent_name: {description: '...', keywords: [...], examples: [...], notes: ...}}，notes 支持字符串或字符串数组。",
                                     },
                                     "top_k": {"type": "integer", "default": 3, "minimum": 1, "maximum": 10},
                                     "min_confidence": {"type": "number", "default": 0.6, "minimum": 0, "maximum": 1},
@@ -659,7 +668,7 @@ class IntentRouterTool(LLMTool):
                                         "min_confidence": 0.6,
                                         "min_margin": 0.15,
                                         "report_intents": False,
-                                        "enable_field_clarify": True,
+                                        "enable_field_clarify": False,
                                         "kn_id": "idrm_metadata_knowledge_network_lbb",
                                         "auth": {"token": "Bearer xxx"},
                                         "llm": {"name": "Tome-pro"},
@@ -778,20 +787,6 @@ class IntentRouterTool(LLMTool):
     def _normalize_text(text: str) -> str:
         return (text or "").strip().lower()
 
-    @staticmethod
-    def _get_final_intent(intent_name: str, intent_meta: Dict[str, Any]) -> str:
-        """
-        从意图配置中解析“最终意图”。
-        规则：优先取 route 最后一跳；若未配置 route，则回退到 intent_name。
-        """
-        route = (intent_meta or {}).get("route", [])
-        if isinstance(route, list):
-            for item in reversed(route):
-                final_name = str(item or "").strip()
-                if final_name:
-                    return final_name
-        return str(intent_name or "").strip()
-
     @classmethod
     def _merge_ranked_by_final_intent(
         cls,
@@ -803,13 +798,11 @@ class IntentRouterTool(LLMTool):
         """
         merged: Dict[str, Tuple[str, float, Dict[str, Any], float]] = {}
         for name, conf, meta, score in ranked:
-            final_intent = cls._get_final_intent(name, meta)
-            if not final_intent:
-                continue
-            prev = merged.get(final_intent)
-            candidate = (final_intent, conf, meta, score)
+
+            prev = merged.get(name)
+            candidate = (name, conf, meta, score)
             if prev is None or (conf, score) > (prev[1], prev[3]):
-                merged[final_intent] = candidate
+                merged[name] = candidate
         return sorted(merged.values(), key=lambda x: (x[1], x[3]), reverse=True)
 
     @staticmethod
@@ -957,7 +950,7 @@ class IntentRouterTool(LLMTool):
         min_confidence: float = 0.6,
         min_margin: float = 0.15,
         report_intents: bool = True,
-        enable_field_clarify: bool = True,
+        enable_field_clarify: bool = False,
         title: str = "",
         background: str = "",
         **_: Any,
@@ -984,7 +977,7 @@ class IntentRouterTool(LLMTool):
         min_confidence: float = 0.6,
         min_margin: float = 0.15,
         report_intents: bool = True,
-        enable_field_clarify: bool = True,
+        enable_field_clarify: bool = False,
         title: str = "",
         background: str = "",
         **_: Any,
@@ -1009,7 +1002,7 @@ class IntentRouterTool(LLMTool):
         min_confidence: float,
         min_margin: float,
         report_intents: bool,
-        enable_field_clarify: bool = True,
+        enable_field_clarify: bool = False,
     ) -> Dict[str, Any]:
         if self._contains_sql_risk_tokens(query):
             return self._build_sql_risk_block_result(
@@ -1028,7 +1021,13 @@ class IntentRouterTool(LLMTool):
             notes = self._normalize_notes(meta.get("notes"))
             s = self._score_intent(query, keywords, examples, notes)
             scores.append(s)
-            metas.append({"keywords": keywords, "examples": examples, "notes": notes, "route": meta.get("route", [])})
+            metas.append({
+                "description": str(meta.get("description", "") or ""),
+                "keywords": keywords,
+                "examples": examples,
+                "notes": notes,
+                "route": meta.get("route", [])
+            })
 
         # 2) 置信度
         confidences = self._softmax_confidences(scores) if scores else []
@@ -1049,6 +1048,7 @@ class IntentRouterTool(LLMTool):
                 "intent": name,
                 "confidence": round(conf, 4),
                 "score": round(score, 4),
+                "description": meta.get("description", ""),
                 "keywords": meta.get("keywords", []),
                 "examples": meta.get("examples", []),
                 "notes": meta.get("notes", []),
@@ -1147,8 +1147,9 @@ class IntentRouterTool(LLMTool):
                 if highest_score > best_score:
                     best_score = highest_score
                     best_match = {
-                        "intent": self._get_final_intent(intent_name, intent_meta),
+                        "intent": intent_name,
                         "score": highest_score,
+                        "description": str(intent_meta.get("description", "") or ""),
                         "keywords": intent_meta.get("keywords", []),
                         "examples": intent_meta.get("examples", []),
                         "notes": self._normalize_notes(intent_meta.get("notes")),
@@ -1172,7 +1173,7 @@ class IntentRouterTool(LLMTool):
         min_confidence: float,
         min_margin: float,
         report_intents: bool,
-        enable_field_clarify: bool = True,
+        enable_field_clarify: bool = False,
     ) -> Dict[str, Any]:
         """
         异步路由流程：
@@ -1202,6 +1203,7 @@ class IntentRouterTool(LLMTool):
                     "intent": embedding_res["intent"],
                     "confidence": round(embedding_res["score"], 4),
                     "score": round(embedding_res["score"], 4),
+                    "description": embedding_res.get("description", ""),
                     "keywords": embedding_res.get("keywords", []),
                     "examples": embedding_res.get("examples", []),
                     "notes": embedding_res.get("notes", []),
@@ -1268,7 +1270,13 @@ class IntentRouterTool(LLMTool):
             notes = self._normalize_notes(meta.get("notes"))
             s = self._score_intent(query, keywords, examples, notes)
             scores.append(s)
-            metas.append({"keywords": keywords, "examples": examples, "notes": notes, "route": meta.get("route", [])})
+            metas.append({
+                "description": str(meta.get("description", "") or ""),
+                "keywords": keywords,
+                "examples": examples,
+                "notes": notes,
+                "route": meta.get("route", [])
+            })
 
         confidences = self._softmax_confidences(scores) if scores else []
         ranked_raw = sorted(
@@ -1285,6 +1293,7 @@ class IntentRouterTool(LLMTool):
                 "intent": name,
                 "confidence": round(conf, 4),
                 "score": round(score, 4),
+                "description": meta.get("description", ""),
                 "keywords": meta.get("keywords", []),
                 "examples": meta.get("examples", []),
                 "notes": meta.get("notes", []),
@@ -1450,8 +1459,6 @@ class IntentRouterTool(LLMTool):
                             except Exception as query_error:
                                 logger.warning(
                                     f"[IntentRouterTool] failed: {query_error}, but continue")
-
-
 
                 if not enable_field_clarify:
                     field_clarify = []
