@@ -90,6 +90,11 @@ func (r *Router) registerApi(engine *gin.Engine) {
 			knRouter.GET("/lexicon/list", middleware.GinReqParamValidator[recommendDomain.ListKnowledgeLexiconReq], r.Middleware.TokenInterception(), r.RecommendSrv.ListKnowledgeLexicon)
 		}
 
+		llmRouter := cognitiveAssistantRouter.Group("/tools/large_language_model")
+		{
+			llmRouter.GET("/agent_log", middleware.GinReqParamValidator[aiDomain.AgentConversationLogListReq], r.LLM.AgentConversationLogList)
+		}
+
 		copilotQaRouter := cognitiveAssistantRouter.Group("/assistant")
 		{
 			//copilotRouter.POST("/prompt", middleware.GinReqParamValidator[copilotDomain.TablePromptReq], r.CopilotSrv.TablePrompt)
@@ -195,6 +200,7 @@ func (r *Router) registerApi(engine *gin.Engine) {
 		llmRouter := cognitiveAssistantRouter.Group("/tools/large_language_model")
 		{
 			llmRouter.POST("/sample_data", middleware.GinReqParamValidator[aiDomain.SampleDataReq], r.LLM.SampleData)
+			llmRouter.GET("/agent_log", middleware.GinReqParamValidator[aiDomain.AgentConversationLogListReq], r.LLM.AgentConversationLogList)
 		}
 		{
 			cognitiveAssistantRouter.POST("/knowledge-build/model/graph", middleware.GinReqParamValidator[kbDomain.ModelDetailParam], r.KNBuildSrv.UpdateSchema)            //将图模型导入到某个图谱

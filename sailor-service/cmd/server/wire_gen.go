@@ -16,6 +16,7 @@ import (
 	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/data_catalog"
 	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/data_subject"
 	impl4 "github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/es_subject_model/impl"
+	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/gorm/agent_conversation"
 	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/gorm/assistant"
 	"github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/gorm/knowledge_datasource"
 	knowledge_network2 "github.com/kweaver-ai/chat-data/sailor-service/adapter/driven/gorm/knowledge_network"
@@ -81,7 +82,8 @@ func InitApp(httpCfg settings.HttpConf) (*af_go_frame.App, func(), error) {
 	drivenConfigurationCenter := configuration_center.NewConfigurationCenter(httpClient, client)
 	alg_serverUseCase := alg_server.NewUseCase(ad, helper, drivenConfigurationCenter)
 	alg_serverService := alg_server2.NewService(alg_serverUseCase)
-	intelligenceUseCase := impl2.NewUseCase(openAI)
+	agentConversationLogRepo := agent_conversation.NewAgentConversationLogRepo(data)
+	intelligenceUseCase := impl2.NewUseCase(openAI, agentConversationLogRepo, drivenUserMgnt, drivenConfigurationCenter)
 	large_language_modelService := large_language_model2.NewService(intelligenceUseCase)
 	mutex := knowledge_build2.NewMutex(data)
 	proxy := self.NewProxy(client)

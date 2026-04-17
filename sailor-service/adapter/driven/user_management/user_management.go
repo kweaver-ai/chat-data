@@ -2,6 +2,7 @@ package user_management
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -383,7 +384,7 @@ func (u *usermgntSvc) GetDepIDsByUserID(ctx context.Context, userID string) (pat
 }
 
 func (u *usermgntSvc) GetUserInfoByID(ctx context.Context, userID string) (userInfo UserInfo, err error) {
-	target := fmt.Sprintf("%s/v1/users/%s/%s", u.baseURL, userID, "groups")
+	target := fmt.Sprintf("%s/v1/users/%s/%s", u.baseURL, userID, "groups,name,account")
 	resp, err := u.httpClient.Get(ctx, target, nil)
 	if err != nil {
 		//u.log.Errorf("GetUserInfoByID failed:%v, url:%v", err, target)
@@ -416,7 +417,7 @@ func (u *usermgntSvc) BatchGetUserInfoByID(ctx context.Context, userIDs []string
 			userIDsStr += ","
 		}
 	}
-	fields := "account,name,csf_level,frozen,roles,email,telephone,third_attr,third_id"
+	fields := "account,name,csf_level,frozen,roles,email,telephone,third_attr,third_id,parent_deps"
 	target := fmt.Sprintf("%s/v1/users/%s/%s", u.baseURL, userIDsStr, fields)
 	respParam, err := u.httpClient.Get(ctx, target, nil)
 	if err != nil {
@@ -451,6 +452,16 @@ func (u *usermgntSvc) convertUserInfo(info map[string]interface{}) (userInfo Use
 		ThirdAttr:  info["third_attr"].(string),
 		ThirdID:    info["third_id"].(string),
 	}
+	payload, _ := json.Marshal(info["parent_deps"])
+	if len(payload) > 0 {
+		departments := make([][]Department, 0)
+		if err := json.Unmarshal(payload, &departments); err != nil {
+			fmt.Printf("unmarshal error %v", err)
+			departments = make([][]Department, 0)
+		}
+		userInfo.ParentDeps = departments
+	}
+
 	roles := info["roles"].([]interface{})
 	for _, val := range roles {
 		roleType, ok := u.roleTypeMap[val.(string)]

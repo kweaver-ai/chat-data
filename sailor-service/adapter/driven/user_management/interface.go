@@ -48,6 +48,7 @@ type UserInfo struct {
 	ThirdID    string            // 第三方应用id
 	UserType   AccessorType      // 用户类型
 	Groups     []Group           // 用户及其所属部门所在的用户组
+	ParentDeps [][]Department    // 用户部门
 }
 
 // AccessorType 访问者类型

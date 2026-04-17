@@ -35,6 +35,7 @@ var Set = wire.NewSet(
 	ad_proxy.NewAD,
 	cp_proxy.NewAD,
 	large_language_model.NewOpenAI,
+	gorm_agent_conversation.NewAgentConversationLogRepo,
 	virtualization_engine.NewVirtualizationEngine,
 	configuration_center.NewConfigurationCenter,
 	hydra.NewHydra,
