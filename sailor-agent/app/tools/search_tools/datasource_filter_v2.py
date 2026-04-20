@@ -254,6 +254,7 @@ class DataSourceFilterToolV2(DataSourceFilterTool):
     ):
         """将工具转换为异步 API 类方法"""
         from app.utils.llm import CustomChatOpenAI
+        from app.utils.llm_params import merge_llm_params
         from app.utils.password import get_authorization
         from app.session.redis_session import RedisHistorySession
         from config import settings
@@ -263,7 +264,7 @@ class DataSourceFilterToolV2(DataSourceFilterTool):
             "openai_api_key": settings.TOOL_LLM_OPENAI_API_KEY,
             "openai_api_base": settings.TOOL_LLM_OPENAI_API_BASE,
         }
-        llm_dict.update(params.get("llm", {}))
+        llm_dict = merge_llm_params(llm_dict, params.get("llm", {}) or {})
         llm = CustomChatOpenAI(**llm_dict)
 
         auth_dict = params.get("auth", {})

@@ -383,12 +383,13 @@ class DataViewSampleDataTool(LLMTool):
         }
         """
         # LLM 这里实际上不会被使用，但为了与现有框架保持一致，仍按约定创建
+        from app.utils.llm_params import merge_llm_params
         llm_dict = {
             "model_name": _SETTINGS.TOOL_LLM_MODEL_NAME,
             "openai_api_key": _SETTINGS.TOOL_LLM_OPENAI_API_KEY,
             "openai_api_base": _SETTINGS.TOOL_LLM_OPENAI_API_BASE,
         }
-        llm_dict.update(params.get("llm", {}))
+        llm_dict = merge_llm_params(llm_dict, params.get("llm", {}) or {})
         llm = CustomChatOpenAI(**llm_dict)
 
         auth_dict = params.get("auth", {})

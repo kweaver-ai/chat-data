@@ -19,6 +19,7 @@ from app.utils.llm import CustomChatOpenAI
 from app.utils.password import get_authorization
 from app.errors import ToolFatalError
 from config import get_settings
+from app.utils.llm_params import merge_llm_params
 
 from app.tools.base import (
     LLMTool,
@@ -569,7 +570,7 @@ class TodoListTool(LLMTool):
             "openai_api_key": _SETTINGS.TOOL_LLM_OPENAI_API_KEY,
             "openai_api_base": _SETTINGS.TOOL_LLM_OPENAI_API_BASE,
         }
-        llm_dict.update(params.get("llm", {}))
+        llm_dict = merge_llm_params(llm_dict, params.get("llm", {}) or {})
         llm = CustomChatOpenAI(**llm_dict)
 
         auth_dict = params.get("auth", {})
@@ -643,7 +644,7 @@ class TodoListTool(LLMTool):
             "openai_api_key": _SETTINGS.TOOL_LLM_OPENAI_API_KEY,
             "openai_api_base": _SETTINGS.TOOL_LLM_OPENAI_API_BASE,
         }
-        llm_dict.update(params.get("llm", {}))
+        llm_dict = merge_llm_params(llm_dict, params.get("llm", {}) or {})
         llm = CustomChatOpenAI(**llm_dict)
 
         auth_dict = params.get("auth", {})
