@@ -51,6 +51,26 @@ def deal_think_tags(content):
     return before_think, think_content, after_think
 
 
+class _ChatCompletionsProxy:
+    """过滤 LangChain 透传到 OpenAI v1 的不兼容字段（如 `id`）。"""
+
+    def __init__(self, inner: Any):
+        self._inner = inner
+
+    def create(self, **kwargs: Any):
+        kwargs.pop("id", None)
+        return self._inner.create(**kwargs)
+
+
+class _AsyncChatCompletionsProxy:
+    def __init__(self, inner: Any):
+        self._inner = inner
+
+    async def create(self, **kwargs: Any):
+        kwargs.pop("id", None)
+        return await self._inner.create(**kwargs)
+
+
 class CustomChatOpenAI(ChatOpenAI):
     """
     Custom ChatOpenAI class to support more parameters
@@ -110,14 +130,18 @@ class CustomChatOpenAI(ChatOpenAI):
             **http_params
         )
 
-        client = openai.OpenAI(**client_params, http_client=http_client).chat.completions
+        client = _ChatCompletionsProxy(
+            openai.OpenAI(**client_params, http_client=http_client).chat.completions
+        )
 
         async_http_client = AsyncHttpxClientWrapper(
             verify=kwargs.get("verify_ssl", True),
             **http_params
         )
 
-        async_client = openai.AsyncOpenAI(**client_params, http_client=async_http_client).chat.completions
+        async_client = _AsyncChatCompletionsProxy(
+            openai.AsyncOpenAI(**client_params, http_client=async_http_client).chat.completions
+        )
 
         super().__init__(client=client, async_client=async_client, *args, **kwargs)
 
